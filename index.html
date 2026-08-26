@@ -211,7 +211,8 @@ function showToast(msg){
 }
 
 /* ==================== CONFIGURAÇÃO DA API (URL do Apps Script) ==================== */
-function getApiUrl(){ return localStorage.getItem('eureca-api-url') || ''; }
+const DEFAULT_API_URL = 'https://script.google.com/a/macros/grupoanga.com/s/AKfycbz6whqWa8XuLitit06BVdyh57ny4Nf6KcadaAIObO6Wg5hVKK8H6pfm1pc_Y5KqTF5L/exec';
+function getApiUrl(){ return localStorage.getItem('eureca-api-url') || DEFAULT_API_URL; }
 function setApiUrl(url){ localStorage.setItem('eureca-api-url', url); }
 
 /* ==================== PONTE COM O BACKEND (fetch, com fallback JSONP) ==================== */
@@ -1041,7 +1042,7 @@ function attachHandlers(){
   });
 }
 
-if(getApiUrl()) state.view = 'welcome';
+state.view = 'welcome';
 render();
 </script>
 </body>
