@@ -199,7 +199,7 @@
 /* ==================== STATE ==================== */
 let state = {
   view: 'setup', currentSlug: null, currentClient: null, clientsIndex: [],
-  genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null
+  genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null, cancelRequested: false
 };
 
 function escapeHtml(str){ if(!str) return ''; return str.toString().replace(/[&<>"]/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
@@ -264,7 +264,8 @@ function apiPost(action, payload){
     document.body.appendChild(form);
 
     // Geração de plano pode demorar bastante (vários posts em sequência) — damos até 9 minutos.
-    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 540000);
+    // Cada chamada agora gera só 1 post (não o plano inteiro), então 90s já é folgado.
+    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error('A IA demorou demais pra responder (mais de 90s). Tente de novo.')); }, 90000);
     function cleanup(){
       clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
@@ -286,18 +287,19 @@ function apiPost(action, payload){
 /* Mapeamento de resposta do formulário -> briefing (feito no navegador, sem chamada de rede) */
 function sleep_(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
 
-// A chave do Gemini no nível gratuito permite só 5 chamadas por minuto — por
-// isso esperamos ~13s entre cada post, pra nunca estourar essa cota e evitar
-// as tentativas repetidas (que são o que estava deixando a geração lentíssima).
-const GEMINI_FREE_TIER_PACING_MS = 13000;
+// Gemini 2.5 Flash Lite permite 10 chamadas por minuto nesta conta — 7s de
+// intervalo mantém uma margem segura sem exagerar na espera.
+const GEMINI_FREE_TIER_PACING_MS = 7000;
 
 async function generatePlanWithProgress(brief, total, onProgress){
   const posts = [];
   for(let i=1;i<=total;i++){
+    if(state.cancelRequested){ throw new Error('Geração cancelada.'); }
     onProgress(Math.round((i-1)/total*100), `Gerando post ${i} de ${total}...`);
     const post = await apiPost('regeneratePost', {brief, index:i, total, outrosPosts: posts});
     posts.push(post);
     if(i < total){
+      if(state.cancelRequested){ throw new Error('Geração cancelada.'); }
       onProgress(Math.round(i/total*100), `Aguardando (limite da API gratuita) antes do próximo post...`);
       await sleep_(GEMINI_FREE_TIER_PACING_MS);
     }
@@ -549,6 +551,7 @@ function renderGenerating(){
     <div class="progress-bar"><div class="progress-bar-fill" style="width:${state.genProgress.pct}%"></div></div>
     <div class="progress-log">${state.genProgress.log}</div>
     <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso leva de 2 a 4 minutos (respeitando o limite da API gratuita entre cada post). Não feche essa aba.</p>
+    <button class="link-btn" id="cancel-generation" style="margin-top:16px;">Cancelar e voltar</button>
   </div></div></div>`;
 }
 
@@ -905,6 +908,8 @@ function attachHandlers(){
   $$('.calendar-row').forEach(row=>{
     row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.view='client-post'; render(); };
   });
+  if($('#cancel-generation')) $('#cancel-generation').onclick = ()=>{ state.cancelRequested = true; showToast('Cancelando...'); };
+
   if($('#new-plan')) $('#new-plan').onclick = ()=>{ state.view='team-brief'; render(); };
   if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; };
 
@@ -945,7 +950,7 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
-      state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
+      state.cancelRequested = false; state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
         const posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
@@ -980,7 +985,7 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const slug = state.currentClient.slug, nome = state.currentClient.name;
 
-      state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
+      state.cancelRequested = false; state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
         const posts = await generatePlanWithProgress(newBrief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
         const clientRecord = { name: nome, slug, brief: newBrief, posts, createdAt: state.currentClient.createdAt, updatedAt: new Date().toISOString() };
