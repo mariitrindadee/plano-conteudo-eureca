@@ -284,12 +284,23 @@ function apiPost(action, payload){
 }
 
 /* Mapeamento de resposta do formulário -> briefing (feito no navegador, sem chamada de rede) */
+function sleep_(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
+
+// A chave do Gemini no nível gratuito permite só 5 chamadas por minuto — por
+// isso esperamos ~13s entre cada post, pra nunca estourar essa cota e evitar
+// as tentativas repetidas (que são o que estava deixando a geração lentíssima).
+const GEMINI_FREE_TIER_PACING_MS = 13000;
+
 async function generatePlanWithProgress(brief, total, onProgress){
   const posts = [];
   for(let i=1;i<=total;i++){
     onProgress(Math.round((i-1)/total*100), `Gerando post ${i} de ${total}...`);
     const post = await apiPost('regeneratePost', {brief, index:i, total, outrosPosts: posts});
     posts.push(post);
+    if(i < total){
+      onProgress(Math.round(i/total*100), `Aguardando (limite da API gratuita) antes do próximo post...`);
+      await sleep_(GEMINI_FREE_TIER_PACING_MS);
+    }
   }
   onProgress(100, 'Plano gerado!');
   return posts;
@@ -537,7 +548,7 @@ function renderGenerating(){
     <div class="spinner"></div><h2>Gerando o plano de conteúdo</h2>
     <div class="progress-bar"><div class="progress-bar-fill" style="width:${state.genProgress.pct}%"></div></div>
     <div class="progress-log">${state.genProgress.log}</div>
-    <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso pode levar até 8-9 minutos (a IA gera um post de cada vez). Não feche essa aba.</p>
+    <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso leva de 2 a 4 minutos (respeitando o limite da API gratuita entre cada post). Não feche essa aba.</p>
   </div></div></div>`;
 }
 
