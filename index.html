@@ -241,10 +241,46 @@ function jsonpGet_(url){
     document.body.appendChild(script);
   });
 }
-async function apiPost(action, payload){
-  const res = await fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({action}, payload)) });
-  if(!res.ok) throw new Error('http-'+res.status);
-  return await res.json();
+let __eurecaMsgCounter = 0;
+function apiPost(action, payload){
+  return new Promise((resolve, reject)=>{
+    const frameName = 'eureca_frame_' + (__eurecaMsgCounter++);
+    const iframe = document.createElement('iframe');
+    iframe.name = frameName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = getApiUrl();
+    form.target = frameName;
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(Object.assign({action}, payload));
+    form.appendChild(input);
+    document.body.appendChild(form);
+
+    // Geração de plano pode demorar bastante (vários posts em sequência) — damos até 9 minutos.
+    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 540000);
+    function cleanup(){
+      clearTimeout(timeoutId);
+      window.removeEventListener('message', onMessage);
+      if(form.parentNode) form.parentNode.removeChild(form);
+      if(iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    }
+    function onMessage(ev){
+      if(ev.data && ev.data.__eurecaResponse){
+        cleanup();
+        if(ev.data.data && ev.data.data.error) reject(new Error(ev.data.data.error));
+        else resolve(ev.data.data);
+      }
+    }
+    window.addEventListener('message', onMessage);
+    form.submit();
+  });
 }
 
 /* Mapeamento de resposta do formulário -> briefing (feito no navegador, sem chamada de rede) */
@@ -490,6 +526,7 @@ function renderGenerating(){
     <div class="spinner"></div><h2>Gerando o plano de conteúdo</h2>
     <div class="progress-bar"><div class="progress-bar-fill" style="width:${state.genProgress.pct}%"></div></div>
     <div class="progress-log">${state.genProgress.log}</div>
+    <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso pode levar até 8-9 minutos (a IA gera um post de cada vez). Não feche essa aba.</p>
   </div></div></div>`;
 }
 
@@ -810,30 +847,34 @@ function attachHandlers(){
 
   if($('#team-submit')){
     $('#team-submit').onclick = async ()=>{
-      $('#team-error').style.display='none';
+      const btn = $('#team-submit'); const errEl = $('#team-error');
+      if(errEl) errEl.style.display='none';
+      btn.disabled = true; const originalText = btn.textContent; btn.textContent = 'Entrando...';
       try{
         const ok = await apiGet('checkTeamPasscode', {pass: $('#team-pass').value});
-        if(ok){ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); }
-        else { $('#team-error').textContent = 'Senha incorreta.'; $('#team-error').style.display='block'; }
+        if(ok){ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); return; }
+        else if(errEl){ errEl.textContent = 'Senha incorreta.'; errEl.style.display='block'; }
       }catch(err){
-        $('#team-error').textContent = 'Não foi possível conectar à API. Erro: ' + err.message;
-        $('#team-error').style.display='block';
+        if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
       }
+      btn.disabled = false; btn.textContent = originalText;
     };
   }
   if($('#client-submit')){
     $('#client-submit').onclick = async ()=>{
-      $('#client-error').style.display='none';
+      const btn = $('#client-submit'); const errEl = $('#client-error');
+      if(errEl) errEl.style.display='none';
+      btn.disabled = true; const originalText = btn.textContent; btn.textContent = 'Buscando...';
       try{
         const name = $('#client-name').value.trim();
         const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
         const client = await apiGet('getClient', {slug});
-        if(client){ state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); }
-        else { $('#client-error').textContent = 'Não encontramos um plano com esse nome.'; $('#client-error').style.display='block'; }
+        if(client){ state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); return; }
+        else if(errEl){ errEl.textContent = 'Não encontramos um plano com esse nome.'; errEl.style.display='block'; }
       }catch(err){
-        $('#client-error').textContent = 'Não foi possível conectar à API. Erro: ' + err.message;
-        $('#client-error').style.display='block';
+        if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
       }
+      btn.disabled = false; btn.textContent = originalText;
     };
   }
   if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view='client-calendar'; render(); };
@@ -882,14 +923,18 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
-      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA (pode levar 1-2 minutos)...'}; render();
-      const posts = await apiPost('generatePlan', {brief, total});
-
-      const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
-      await apiPost('saveClient', {client: clientRecord});
-      state.clientsIndex = await apiGet('getClientsIndex');
-      state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
-      showToast('Plano gerado com sucesso!');
+      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA...'}; render();
+      try{
+        const posts = await apiPost('generatePlan', {brief, total});
+        const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
+        await apiPost('saveClient', {client: clientRecord});
+        state.clientsIndex = await apiGet('getClientsIndex');
+        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+        showToast('Plano gerado com sucesso!');
+      }catch(err){
+        state.view = 'team-brief'; render();
+        showToast('Erro ao gerar o plano: ' + err.message);
+      }
     };
   }
 
