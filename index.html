@@ -199,7 +199,7 @@
 /* ==================== STATE ==================== */
 let state = {
   view: 'setup', currentSlug: null, currentClient: null, clientsIndex: [],
-  genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null, cancelRequested: false
+  genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null, cancelRequested: false, role: null
 };
 
 function escapeHtml(str){ if(!str) return ''; return str.toString().replace(/[&<>"]/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
@@ -383,12 +383,13 @@ function render(){
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
-  else if(state.view==='team-review') app.innerHTML = renderBoard(true);
+  else if(state.view==='team-intro') app.innerHTML = renderClientIntro(true);
+  else if(state.view==='team-calendar') app.innerHTML = renderClientCalendar(true);
+  else if(state.view==='team-post') app.innerHTML = renderClientPostDetail(true);
   else if(state.view==='client-login') app.innerHTML = renderClientLogin();
-  else if(state.view==='client-intro') app.innerHTML = renderClientIntro();
-  else if(state.view==='client-calendar') app.innerHTML = renderClientCalendar();
-  else if(state.view==='client-post') app.innerHTML = renderClientPostDetail();
-  else if(state.view==='client-board') app.innerHTML = renderBoard(false);
+  else if(state.view==='client-intro') app.innerHTML = renderClientIntro(false);
+  else if(state.view==='client-calendar') app.innerHTML = renderClientCalendar(false);
+  else if(state.view==='client-post') app.innerHTML = renderClientPostDetail(false);
   attachHandlers();
 }
 
@@ -454,8 +455,9 @@ function renderTeamDashboard(){
   const cards = state.clientsIndex.map(c=>{
     const total = c.totalPosts||0, copyOk = c.copyAprovado||0, artOk = c.arteAprovada||0, pub = c.publicado||0;
     return `
-    <div class="client-card" data-slug="${c.slug}">
-      <h3>${escapeHtml(c.name)}</h3>
+    <div class="client-card" data-slug="${c.slug}" style="position:relative;">
+      <button class="delete-client-btn" data-slug="${c.slug}" data-name="${escapeAttr(c.name)}" title="Excluir plano" style="position:absolute;top:14px;right:14px;background:none;color:var(--grey);font-size:16px;line-height:1;padding:4px;">✕</button>
+      <h3 style="padding-right:20px;">${escapeHtml(c.name)}</h3>
       <div style="font-size:12px;color:var(--grey)">${total} posts no plano</div>
       <div class="status-row">
         <span class="chip ok">${copyOk} copy aprovada</span>
@@ -555,19 +557,23 @@ function renderGenerating(){
   </div></div></div>`;
 }
 
-/* ==================== CLIENTE: INTRODUÇÃO ==================== */
-function renderClientIntro(){
+/* ==================== INTRODUÇÃO (equipe e cliente) ==================== */
+function renderClientIntro(isTeam){
   const client = state.currentClient;
   const periodo = client.brief.periodoAtracao || client.brief.periodoInscricoes || '';
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+      <div class="topbar-actions">
+        ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
+      </div>
+    </div>
     <div class="intro-wrap">
       <div class="eyebrow">Plano de conteúdos</div>
       <h1>${escapeHtml(client.name)}</h1>
       ${periodo ? `<p class="periodo">Período de atração: ${escapeHtml(periodo)}</p>` : ''}
       <p style="font-size:14.5px;line-height:1.7;color:var(--ink-soft);margin-bottom:32px;">
-        Aqui você vai acompanhar todo o plano de conteúdo criado para o seu programa. Veja como funciona o processo de aprovação:
+        ${isTeam ? 'Revise comentários, decida sobre sugestões da IA, suba artes e controle os status.' : 'Aqui você vai acompanhar todo o plano de conteúdo criado para o seu programa. Veja como funciona o processo de aprovação:'}
       </p>
       <div class="process-steps">
         <div class="process-step">
@@ -591,8 +597,8 @@ function renderClientIntro(){
   </div>`;
 }
 
-/* ==================== CLIENTE: CALENDÁRIO GERAL ==================== */
-function renderClientCalendar(){
+/* ==================== CALENDÁRIO GERAL (equipe e cliente) ==================== */
+function renderClientCalendar(isTeam){
   const client = state.currentClient;
   const rows = client.posts.map((p, idx)=>`
     <div class="calendar-row" data-idx="${idx}">
@@ -606,56 +612,43 @@ function renderClientCalendar(){
     </div>`).join('');
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+      <div class="topbar-actions">
+        ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
+      </div>
+    </div>
     <div class="main" style="padding-bottom:0;">
       <button class="back-link" id="back-intro">&larr; Voltar</button>
-      <div class="main-header"><div><h1>Calendário de conteúdos</h1><p>Clique em um post para ver os detalhes e comentar.</p></div></div>
+      <div class="main-header"><div><h1>Calendário de conteúdos</h1><p>Clique em um post para ver os detalhes${isTeam ? ', editar e revisar' : ' e comentar'}.</p></div></div>
     </div>
     <div class="calendar-list">${rows}</div>
   </div>`;
 }
 
-/* ==================== CLIENTE: DETALHE DO POST (estilo do template) ==================== */
-function renderClientPostDetail(){
+/* ==================== DETALHE DO POST (estilo do template — equipe e cliente) ==================== */
+function renderClientPostDetail(isTeam){
   const client = state.currentClient;
   const idx = state.currentPostIdx;
   const p = client.posts[idx];
 
-  const copyComments = (p.copyComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
-  const copyActions = p.copyStatus !== 'aprovado' ? `
-    <div class="comment-input-row"><input type="text" placeholder="Deixe um comentário sobre a copy..." class="copy-comment-box" data-idx="${idx}" /></div>
-    <div class="action-row" style="margin-top:8px;">
-      <button class="btn-approve" data-idx="${idx}" data-action="aprovado">Aprovar copy</button>
-      <button class="btn-change" data-idx="${idx}" data-action="alteracao">Pedir alteração</button>
+  const moveControls = isTeam ? `
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+      <button class="btn-small btn-ghost move-post" data-idx="${idx}" data-dir="up" ${idx===0?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>↑ Subir</button>
+      <button class="btn-small btn-ghost move-post" data-idx="${idx}" data-dir="down" ${idx===client.posts.length-1?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>↓ Descer</button>
     </div>` : '';
-
-  const artUnlocked = p.copyStatus === 'aprovado';
-  let artBlock = '';
-  if(!artUnlocked){
-    artBlock = `<div class="pd-art-box">A arte aparece aqui assim que a copy for aprovada.</div>`;
-  } else if(p.artImageUrl){
-    const artComments = (p.artComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
-    const artActions = p.artStatus === 'enviada' ? `
-      <div class="comment-input-row" style="margin-top:10px;"><input type="text" placeholder="Comentário sobre a arte..." class="art-comment-box" data-idx="${idx}" /></div>
-      <div class="action-row" style="margin-top:8px;">
-        <button class="btn-approve" data-idx="${idx}" data-artaction="aprovada">Aprovar arte</button>
-        <button class="btn-change" data-idx="${idx}" data-artaction="alteracao">Pedir alteração</button>
-      </div>` : '';
-    artBlock = `<div class="pd-art-box" style="text-align:left;"><img src="${escapeAttr(p.artImageUrl)}" alt="Arte do post" />
-      <div style="margin-top:10px;"><span class="status-pill ${p.artStatus}">${statusLabel('art',p.artStatus)}</span></div>
-      ${artComments ? `<div class="comment-list" style="margin-top:8px;">${artComments}</div>` : ''}
-      ${artActions}</div>`;
-  } else {
-    artBlock = `<div class="pd-art-box">Espaço pra por arte — aguardando a equipe enviar.</div>`;
-  }
 
   return `
   <div class="screen" style="background:var(--paper-dim);">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+      <div class="topbar-actions">
+        ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
+      </div>
+    </div>
     <div class="post-detail-page">
       <div class="post-detail-blob"></div>
       <div class="post-detail-inner">
         <button class="back-link" id="back-calendar">&larr; Voltar ao calendário</button>
+        ${moveControls}
         <div class="post-detail-eyebrow">Plano de conteúdos — ${escapeHtml(client.name)}</div>
         <h1 class="post-detail-title">Post ${idx+1}</h1>
         <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
@@ -669,80 +662,25 @@ function renderClientPostDetail(){
             <div class="pd-label">Copy</div>
             <div class="pd-value">${escapeHtml(p.copy)}</div>
             ${p.roteiro ? `<div class="pd-label">Roteiro</div><div class="pd-value">${escapeHtml(p.roteiro)}</div>` : ''}
+            ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
             <div class="pd-label">Espaço pra arte</div>
-            ${artBlock}
+            ${renderArtStage(p, idx, isTeam)}
           </div>
           <div>
             ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>`
               <div class="pd-label">Legenda ${escapeHtml(canal)}</div>
               <div class="pd-value">${escapeHtml(p.legendas[canal])}</div>`).join('')}
-
-            <div class="pd-status-box">
-              <div class="pd-label" style="padding-top:0;">Status</div>
-              <span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span>
-              <div class="pd-label" style="margin-top:18px;">Observação / comentário</div>
-              ${copyComments ? `<div class="comment-list">${copyComments}</div>` : '<p style="font-size:12.5px;color:var(--grey);">Nenhum comentário ainda.</p>'}
-              ${copyActions}
-            </div>
+            ${renderCopyStage(p, idx, isTeam)}
           </div>
         </div>
+
+        ${renderPubStage(p, idx, isTeam)}
       </div>
     </div>
   </div>`;
 }
 
 
-function renderBoard(isTeam){
-  const client = state.currentClient;
-  if(!client) return `<div class="main">Cliente não encontrado.</div>`;
-  const posts = client.posts;
-  const copyOk = posts.filter(p=>p.copyStatus==='aprovado').length;
-  const arteOk = posts.filter(p=>p.artStatus==='aprovada').length;
-  const publicados = posts.filter(p=>p.pubStatus==='publicado').length;
-
-  const cards = posts.map((p, idx)=>{
-    return `
-    <div class="post-card">
-      <div class="post-card-top">
-        <div class="post-card-tags"><span class="tag format">${escapeHtml(p.formato||'—')}</span><span class="tag">${escapeHtml(p.canais||'—')}</span></div>
-        <h3>${escapeHtml(p.tema)}</h3>
-      </div>
-      <div class="post-card-body">
-        ${renderLegendasBlocks(p.legendas)}
-        <div class="field-block"><div class="label">Copy</div><div class="value">${escapeHtml(p.copy)}</div></div>
-        ${p.roteiro ? `<div class="field-block"><div class="label">Roteiro</div><div class="value">${escapeHtml(p.roteiro)}</div></div>` : ''}
-        ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
-      </div>
-      ${renderCopyStage(p, idx, isTeam)}
-      ${renderArtStage(p, idx, isTeam)}
-      ${renderPubStage(p, idx, isTeam)}
-    </div>`;
-  }).join('');
-
-  return `
-  <div class="screen">
-    <div class="topbar">
-      <div class="brand"><span class="dot"></span>Eureca</div>
-      <div class="topbar-actions">
-        ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
-      </div>
-    </div>
-    <div class="board-header"><div class="blob"></div>
-      <div class="board-header-inner">
-        <div class="eyebrow">Plano de conteúdos</div>
-        <h1>${escapeHtml(client.name)}</h1>
-        <p>${isTeam ? 'Revise comentários, decida sobre sugestões da IA, suba artes e controle os status.' : 'Veja o plano do mês, comente e aprove copy e arte.'}</p>
-        <div class="summary-bar">
-          <div class="summary-item"><b>${posts.length}</b>posts</div>
-          <div class="summary-item"><b>${copyOk}</b>copy aprovada</div>
-          <div class="summary-item"><b>${arteOk}</b>arte aprovada</div>
-          <div class="summary-item"><b>${publicados}</b>publicados</div>
-        </div>
-      </div>
-    </div>
-    <div class="board">${cards}</div>
-  </div>`;
-}
 
 function renderLegendasBlocks(legendas){
   const canais = Object.keys(legendas||{}).filter(c=>legendas[c]);
@@ -878,10 +816,10 @@ function attachHandlers(){
   if($('#go-team')) $('#go-team').onclick = ()=>{ state.view='team-login'; render(); };
   if($('#go-client')) $('#go-client').onclick = ()=>{ state.view='client-login'; render(); };
   if($('#back-welcome')) $('#back-welcome').onclick = ()=>{ state.view='welcome'; render(); };
-  if($('#logout')) $('#logout').onclick = ()=>{ state = {...state, view:'welcome', currentSlug:null, currentClient:null}; render(); };
+  if($('#logout')) $('#logout').onclick = ()=>{ state = {...state, view:'welcome', currentSlug:null, currentClient:null, role:null}; render(); };
   if($('#back-dashboard')) $('#back-dashboard').onclick = async ()=>{ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); };
   if($('#edit-brief')) $('#edit-brief').onclick = ()=>{ state.view='team-edit-brief'; render(); };
-  if($('#back-review')) $('#back-review').onclick = ()=>{ state.view='team-review'; render(); };
+  if($('#back-review')) $('#back-review').onclick = ()=>{ state.view='team-intro'; render(); };
 
   if($('#team-submit')){
     $('#team-submit').onclick = async ()=>{
@@ -890,7 +828,7 @@ function attachHandlers(){
       btn.disabled = true; const originalText = btn.textContent; btn.textContent = 'Entrando...';
       try{
         const ok = await apiGet('checkTeamPasscode', {pass: $('#team-pass').value});
-        if(ok){ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); return; }
+        if(ok){ state.role='team'; state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); return; }
         else if(errEl){ errEl.textContent = 'Senha incorreta.'; errEl.style.display='block'; }
       }catch(err){
         if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
@@ -907,7 +845,7 @@ function attachHandlers(){
         const name = $('#client-name').value.trim();
         const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
         const client = await apiGet('getClient', {slug});
-        if(client){ state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); return; }
+        if(client){ state.role='client'; state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); return; }
         else if(errEl){ errEl.textContent = 'Não encontramos um plano com esse nome.'; errEl.style.display='block'; }
       }catch(err){
         if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
@@ -915,11 +853,11 @@ function attachHandlers(){
       btn.disabled = false; btn.textContent = originalText;
     };
   }
-  if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view='client-calendar'; render(); };
-  if($('#back-intro')) $('#back-intro').onclick = ()=>{ state.view='client-intro'; render(); };
-  if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view='client-calendar'; render(); };
+  if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
+  if($('#back-intro')) $('#back-intro').onclick = ()=>{ state.view = state.role==='team' ? 'team-intro' : 'client-intro'; render(); };
+  if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
   $$('.calendar-row').forEach(row=>{
-    row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.view='client-post'; render(); };
+    row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.view = state.role==='team' ? 'team-post' : 'client-post'; render(); };
   });
   if($('#cancel-generation')) $('#cancel-generation').onclick = ()=>{ state.cancelRequested = true; showToast('Cancelando...'); };
 
@@ -969,7 +907,7 @@ function attachHandlers(){
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
-        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-intro'; render();
         showToast('Plano gerado com sucesso!');
       }catch(err){
         state.view = 'team-brief'; render();
@@ -985,7 +923,7 @@ function attachHandlers(){
       newBrief.programa = state.currentClient.brief.programa;
       state.currentClient.brief = newBrief;
       await apiPost('saveClient', {client: state.currentClient});
-      state.view = 'team-review'; render();
+      state.view = 'team-intro'; render();
       showToast('Informações do programa atualizadas.');
     };
   }
@@ -1004,7 +942,7 @@ function attachHandlers(){
         const clientRecord = { name: nome, slug, brief: newBrief, posts, createdAt: state.currentClient.createdAt, updatedAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
-        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-intro'; render();
         showToast('Plano regenerado!');
       }catch(err){
         state.view = 'team-edit-brief'; render();
@@ -1017,7 +955,34 @@ function attachHandlers(){
     card.onclick = async ()=>{
       const slug = card.getAttribute('data-slug');
       state.currentSlug = slug; state.currentClient = await apiGet('getClient', {slug});
-      state.view = 'team-review'; render();
+      state.view = 'team-intro'; render();
+    };
+  });
+
+  $$('.move-post').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const dir = btn.getAttribute('data-dir');
+      const posts = state.currentClient.posts;
+      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if(targetIdx < 0 || targetIdx >= posts.length) return;
+      [posts[idx], posts[targetIdx]] = [posts[targetIdx], posts[idx]];
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast('Ordem atualizada.');
+    };
+  });
+
+  $$('.delete-client-btn').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const slug = btn.getAttribute('data-slug');
+      const name = btn.getAttribute('data-name');
+      if(!window.confirm(`Excluir o plano de "${name}"? Isso não pode ser desfeito.`)) return;
+      await apiPost('deleteClient', {slug});
+      state.clientsIndex = await apiGet('getClientsIndex');
+      render();
+      showToast('Plano excluído.');
     };
   });
 
