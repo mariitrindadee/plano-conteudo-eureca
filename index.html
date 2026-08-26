@@ -284,6 +284,17 @@ function apiPost(action, payload){
 }
 
 /* Mapeamento de resposta do formulário -> briefing (feito no navegador, sem chamada de rede) */
+async function generatePlanWithProgress(brief, total, onProgress){
+  const posts = [];
+  for(let i=1;i<=total;i++){
+    onProgress(Math.round((i-1)/total*100), `Gerando post ${i} de ${total}...`);
+    const post = await apiPost('regeneratePost', {brief, index:i, total, outrosPosts: posts});
+    posts.push(post);
+  }
+  onProgress(100, 'Plano gerado!');
+  return posts;
+}
+
 function mapRowToBrief(row){
   const brief = { programa:'', tipoPrograma:'', objetivoEmail:'', areasVaga:'', sobreAreas:'', periodoInscricoes:'', faseTestes:'', beneficios:'', modalidade:'', ondeInscrever:'', motivoInteresse:'', requisitos:'', algoMais:'', cronograma:'', valorBolsa:'', mote:'', tomVoz:'', redes:'', sobreEmpresa:'' };
   for(const key in row){
@@ -923,9 +934,9 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
-      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA...'}; render();
+      state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
-        const posts = await apiPost('generatePlan', {brief, total});
+        const posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
@@ -958,14 +969,18 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const slug = state.currentClient.slug, nome = state.currentClient.name;
 
-      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA...'}; render();
-      const posts = await apiPost('generatePlan', {brief: newBrief, total});
-
-      const clientRecord = { name: nome, slug, brief: newBrief, posts, createdAt: state.currentClient.createdAt, updatedAt: new Date().toISOString() };
-      await apiPost('saveClient', {client: clientRecord});
-      state.clientsIndex = await apiGet('getClientsIndex');
-      state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
-      showToast('Plano regenerado!');
+      state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
+      try{
+        const posts = await generatePlanWithProgress(newBrief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
+        const clientRecord = { name: nome, slug, brief: newBrief, posts, createdAt: state.currentClient.createdAt, updatedAt: new Date().toISOString() };
+        await apiPost('saveClient', {client: clientRecord});
+        state.clientsIndex = await apiGet('getClientsIndex');
+        state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+        showToast('Plano regenerado!');
+      }catch(err){
+        state.view = 'team-edit-brief'; render();
+        showToast('Erro ao regenerar o plano: ' + err.message);
+      }
     };
   }
 
