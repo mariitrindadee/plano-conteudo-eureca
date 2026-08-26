@@ -673,8 +673,9 @@ function renderClientPostDetail(){
             ${artBlock}
           </div>
           <div>
-            <div class="pd-label">Legenda</div>
-            <div class="pd-value">${escapeHtml(p.legenda)}</div>
+            ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>`
+              <div class="pd-label">Legenda ${escapeHtml(canal)}</div>
+              <div class="pd-value">${escapeHtml(p.legendas[canal])}</div>`).join('')}
 
             <div class="pd-status-box">
               <div class="pd-label" style="padding-top:0;">Status</div>
@@ -707,7 +708,7 @@ function renderBoard(isTeam){
         <h3>${escapeHtml(p.tema)}</h3>
       </div>
       <div class="post-card-body">
-        ${p.legenda ? `<div class="field-block"><div class="label">Legenda</div><div class="value">${escapeHtml(p.legenda)}</div></div>` : ''}
+        ${renderLegendasBlocks(p.legendas)}
         <div class="field-block"><div class="label">Copy</div><div class="value">${escapeHtml(p.copy)}</div></div>
         ${p.roteiro ? `<div class="field-block"><div class="label">Roteiro</div><div class="value">${escapeHtml(p.roteiro)}</div></div>` : ''}
         ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
@@ -743,6 +744,16 @@ function renderBoard(isTeam){
   </div>`;
 }
 
+function renderLegendasBlocks(legendas){
+  const canais = Object.keys(legendas||{}).filter(c=>legendas[c]);
+  if(!canais.length) return '<div class="field-block"><div class="label">Legenda</div><div class="value" style="color:var(--grey);">Nenhuma legenda gerada.</div></div>';
+  return canais.map(canal=>`
+    <div class="field-block">
+      <div class="label">Legenda ${escapeHtml(canal)}</div>
+      <div class="value">${escapeHtml(legendas[canal])}</div>
+    </div>`).join('');
+}
+
 function statusLabel(kind, val){
   const map = {
     copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração'},
@@ -757,7 +768,7 @@ function renderCopyStage(p, idx, isTeam){
   const suggestion = (isTeam && p.aiSuggestion) ? `
     <div class="ai-suggestion">
       <div class="label">💡 Sugestão de ajuste da IA (baseada no comentário do cliente)</div>
-      <div class="value"><b>Legenda:</b> ${escapeHtml(p.aiSuggestion.legenda)}</div>
+      ${Object.keys(p.aiSuggestion.legendas||{}).map(canal=>`<div class="value"><b>Legenda ${escapeHtml(canal)}:</b> ${escapeHtml(p.aiSuggestion.legendas[canal])}</div>`).join('')}
       <div class="value"><b>Copy:</b> ${escapeHtml(p.aiSuggestion.copy)}</div>
       ${p.aiSuggestion.roteiro ? `<div class="value"><b>Roteiro:</b> ${escapeHtml(p.aiSuggestion.roteiro)}</div>` : ''}
       <div class="ai-suggestion-actions">
@@ -775,7 +786,9 @@ function renderCopyStage(p, idx, isTeam){
         <div class="field-block"><div class="label">Horário</div><input type="text" class="edit-horario" data-idx="${idx}" value="${escapeAttr(p.horario||'A definir')}" /></div>
       </div>
       <div class="field-block"><div class="label">Editar copy</div><textarea class="edit-copy" data-idx="${idx}">${escapeHtml(p.copy)}</textarea></div>
-      <div class="field-block"><div class="label">Editar legenda</div><textarea class="edit-legenda" data-idx="${idx}">${escapeHtml(p.legenda)}</textarea></div>
+      ${Object.keys(p.legendas||{}).map(canal=>`
+        <div class="field-block"><div class="label">Editar legenda ${escapeHtml(canal)}</div><textarea class="edit-legenda" data-idx="${idx}" data-canal="${escapeAttr(canal)}">${escapeHtml(p.legendas[canal])}</textarea></div>
+      `).join('')}
       <div class="edit-actions">
         <button class="btn-small btn-ghost save-edit" data-idx="${idx}">Salvar edição</button>
         <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar com IA</button>
@@ -1047,7 +1060,7 @@ function attachHandlers(){
       const idx = parseInt(btn.getAttribute('data-idx'),10);
       const post = state.currentClient.posts[idx];
       const s = post.aiSuggestion;
-      if(s){ post.tema=s.tema; post.formato=s.formato; post.canais=s.canais; post.copy=s.copy; post.legenda=s.legenda; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
+      if(s){ post.tema=s.tema; post.formato=s.formato; post.canais=s.canais; post.copy=s.copy; post.legendas=s.legendas; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
       await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Sugestão aplicada ao post.');
     };
   });
@@ -1056,7 +1069,7 @@ function attachHandlers(){
       const idx = parseInt(btn.getAttribute('data-idx'),10);
       const post = state.currentClient.posts[idx];
       const s = post.aiSuggestion;
-      if(s){ post.copy=s.copy; post.legenda=s.legenda; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
+      if(s){ post.copy=s.copy; post.legendas=s.legendas; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
       await apiPost('saveClient', {client: state.currentClient}); render();
       showToast('Sugestão carregada nos campos de edição — ajuste como quiser e salve.');
     };
@@ -1076,13 +1089,17 @@ function attachHandlers(){
       const data = document.querySelector(`.edit-data[data-idx="${idx}"]`);
       const horario = document.querySelector(`.edit-horario[data-idx="${idx}"]`);
       const copy = document.querySelector(`.edit-copy[data-idx="${idx}"]`);
-      const legenda = document.querySelector(`.edit-legenda[data-idx="${idx}"]`);
+      const legendaInputs = document.querySelectorAll(`.edit-legenda[data-idx="${idx}"]`);
       const post = state.currentClient.posts[idx];
       if(tema) post.tema = tema.value;
       if(data) post.data = data.value;
       if(horario) post.horario = horario.value;
       if(copy) post.copy = copy.value;
-      if(legenda) post.legenda = legenda.value;
+      if(legendaInputs.length){
+        const novasLegendas = {};
+        legendaInputs.forEach(el=>{ novasLegendas[el.getAttribute('data-canal')] = el.value; });
+        post.legendas = novasLegendas;
+      }
       post.copyStatus = 'pendente';
       await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Post atualizado.');
     };
