@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eureca · Plano de Conteúdos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#211F2E; --ink-soft:#3E3C4C; --mint:#71FFB4; --mint-soft:#99FFBB;
+    --teal:#1D8674; --paper:#FFFFFF; --paper-dim:#F6F5F8; --line:#E7E5EE;
+    --grey:#888888; --danger:#E0574C; --warn:#E8A93B; --blue:#3355A8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--paper-dim);color:var(--ink);min-height:100vh;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.01em;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  input,textarea,select{font-family:inherit;}
+  a{color:inherit;}
+  ::selection{background:var(--mint);color:var(--ink);}
+
+  .screen{min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;background:var(--ink);color:var(--paper);flex-wrap:wrap;gap:10px;}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk';font-weight:700;font-size:19px;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--mint);}
+  .topbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .pill-btn{background:transparent;color:var(--paper);border:1px solid rgba(255,255,255,0.25)!important;padding:8px 16px;border-radius:100px;font-size:13px;font-weight:600;}
+  .pill-btn:hover{border-color:var(--mint)!important;color:var(--mint);}
+
+  .center-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;position:relative;overflow:hidden;background:var(--ink);}
+  .blob{position:absolute;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #C9A6F5 0%, #8FB6F0 45%, transparent 70%);filter:blur(60px);opacity:0.55;pointer-events:none;}
+  .blob.b1{bottom:-260px;left:-160px;} .blob.b2{top:-220px;right:-200px;opacity:0.35;}
+  .auth-card{position:relative;z-index:1;background:var(--paper);border-radius:20px;padding:44px 40px;max-width:420px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,0.35);}
+  .auth-card .eyebrow{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+  .auth-card h1{font-size:26px;margin:0 0 8px;}
+  .auth-card p.sub{color:var(--grey);font-size:14px;margin:0 0 26px;line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--ink-soft);}
+  .field input,.field textarea,.field select{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;background:var(--paper-dim);color:var(--ink);outline:none;transition:border-color .15s;}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--teal);background:var(--paper);}
+  .field textarea{resize:vertical;min-height:70px;}
+  .btn-primary{width:100%;padding:13px 18px;border-radius:10px;background:var(--ink);color:var(--paper);font-weight:700;font-size:14px;transition:background .15s;}
+  .btn-primary:hover{background:var(--teal);}
+  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-mint{background:var(--mint);color:var(--ink);}
+  .btn-mint:hover{background:var(--mint-soft);}
+  .link-btn{background:none;color:var(--grey);font-size:13px;text-decoration:underline;padding:0;}
+  .error-msg{color:var(--danger);font-size:13px;margin-top:-8px;margin-bottom:14px;}
+
+  .main{flex:1;padding:32px;max-width:1180px;margin:0 auto;width:100%;}
+  .main-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:16px;}
+  .main-header h1{font-size:28px;margin:0 0 4px;}
+  .main-header p{color:var(--grey);margin:0;font-size:14px;}
+  .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+  .client-card{background:var(--paper);border-radius:16px;padding:20px;border:1.5px solid var(--line);cursor:pointer;transition:transform .15s, box-shadow .15s;}
+  .client-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(33,31,46,0.08);border-color:var(--teal);}
+  .client-card h3{margin:0 0 10px;font-size:17px;}
+  .status-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+  .chip{font-size:11px;font-weight:700;padding:4px 9px;border-radius:100px;}
+  .chip.ok{background:#DFF9EB;color:var(--teal);}
+  .chip.warn{background:#FDF1DC;color:#B4791F;}
+  .chip.pending{background:#EFEDF5;color:var(--ink-soft);}
+  .chip.info{background:#E9F0FF;color:var(--blue);}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--grey);border:1.5px dashed var(--line);border-radius:16px;}
+  .fab{position:fixed;bottom:28px;right:28px;background:var(--ink);color:var(--paper);padding:14px 22px;border-radius:100px;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,0.25);display:flex;align-items:center;gap:8px;}
+  .fab:hover{background:var(--teal);}
+
+  .form-card{background:var(--paper);border-radius:18px;padding:32px;max-width:720px;margin:0 auto;border:1.5px solid var(--line);}
+  .form-card h2{margin:0 0 4px;font-size:22px;}
+  .form-card p.hint{color:var(--grey);font-size:13px;margin:0 0 24px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:640px){.grid-2{grid-template-columns:1fr;}}
+  .range-row{display:flex;align-items:center;gap:12px;}
+  .range-row input[type=range]{flex:1;}
+  .range-val{font-weight:700;min-width:26px;text-align:center;}
+
+  .progress-wrap{max-width:520px;margin:80px auto;text-align:center;}
+  .progress-bar{height:8px;background:var(--line);border-radius:100px;overflow:hidden;margin:20px 0 12px;}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--mint));transition:width .3s;}
+  .progress-log{font-size:13px;color:var(--grey);min-height:18px;}
+  .spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--teal);animation:spin 0.8s linear infinite;margin:0 auto 20px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .board-header{background:var(--ink);color:var(--paper);padding:36px 32px;position:relative;overflow:hidden;}
+  .board-header .blob{width:420px;height:420px;top:-180px;right:-120px;opacity:0.4;}
+  .board-header-inner{position:relative;z-index:1;max-width:1180px;margin:0 auto;}
+  .board-header .eyebrow{color:var(--mint);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+  .board-header h1{font-size:30px;margin:0 0 6px;}
+  .board-header p{color:#C9C6D6;font-size:14px;margin:0;max-width:600px;line-height:1.5;}
+  .summary-bar{display:flex;gap:20px;margin-top:22px;flex-wrap:wrap;}
+  .summary-item{font-size:13px;color:#C9C6D6;}
+  .summary-item b{color:var(--paper);font-size:18px;display:block;font-family:'Space Grotesk';}
+
+  .board{max-width:1180px;margin:0 auto;padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
+  .post-card{background:var(--paper);border-radius:18px;border:1.5px solid var(--line);overflow:hidden;display:flex;flex-direction:column;}
+  .post-card-top{padding:20px 22px 16px;border-bottom:1px solid var(--line);}
+  .post-card-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;background:var(--paper-dim);color:var(--ink-soft);}
+  .tag.format{background:#E9F0FF;color:var(--blue);}
+  .post-card-top h3{margin:0;font-size:17px;line-height:1.3;}
+  .post-card-body{padding:18px 22px;flex:1;display:flex;flex-direction:column;gap:14px;}
+  .field-block .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--grey);margin-bottom:5px;}
+  .field-block .value{font-size:13.5px;line-height:1.55;white-space:pre-wrap;}
+  .trend-note{background:#F1FCF6;border:1px solid #CFF2DE;border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--teal);line-height:1.5;}
+
+  .stage{border-top:1px solid var(--line);padding:16px 22px;background:var(--paper-dim);}
+  .stage-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .stage-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:100px;}
+  .status-pill.pendente,.status-pill.aguardando,.status-pill.nao_agendado{background:#EFEDF5;color:var(--ink-soft);}
+  .status-pill.aprovado,.status-pill.aprovada,.status-pill.publicado{background:#DFF9EB;color:var(--teal);}
+  .status-pill.alteracao{background:#FDF1DC;color:#B4791F;}
+  .status-pill.enviada,.status-pill.agendado{background:#E9F0FF;color:var(--blue);}
+  .status-pill.locked{background:#F1F0F5;color:#B7B4C2;}
+
+  .comment-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:120px;overflow-y:auto;}
+  .comment-item{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;}
+  .comment-item .meta{color:var(--grey);font-size:11px;margin-bottom:3px;}
+  .action-row{display:flex;gap:8px;}
+  .action-row button{flex:1;padding:9px;border-radius:9px;font-size:12.5px;font-weight:700;}
+  .btn-approve{background:var(--teal);color:var(--paper);}
+  .btn-approve:hover{background:#166B5C;}
+  .btn-change{background:var(--paper);border:1.5px solid var(--line)!important;color:var(--ink-soft);}
+  .btn-change:hover{border-color:var(--warn)!important;color:#B4791F;}
+  .comment-input-row{display:flex;gap:8px;margin-top:8px;}
+  .comment-input-row input{flex:1;}
+
+  .ai-suggestion{background:#FFF9EC;border:1.5px dashed #E8C77A;border-radius:12px;padding:14px;margin-top:10px;}
+  .ai-suggestion .label{font-size:11px;font-weight:800;color:#9A6B1E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .ai-suggestion .value{font-size:13px;line-height:1.5;margin-bottom:8px;}
+  .ai-suggestion-actions{display:flex;gap:8px;margin-top:10px;}
+  .ai-suggestion-actions button{flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:700;}
+
+  .admin-post-edit{padding:14px 22px;border-top:1px dashed var(--line);}
+  .admin-post-edit textarea, .admin-post-edit input{margin-bottom:8px;}
+  .edit-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+  .btn-small{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;}
+  .btn-ghost{background:var(--paper-dim);color:var(--ink-soft);}
+  .btn-ghost:hover{background:var(--line);}
+
+  .art-preview{width:100%;border-radius:10px;margin-bottom:10px;display:block;background:var(--paper-dim);min-height:80px;}
+  .art-upload-label{display:inline-block;padding:9px 14px;border-radius:9px;background:var(--ink);color:var(--paper);font-size:12.5px;font-weight:700;cursor:pointer;}
+  .art-upload-label:hover{background:var(--teal);}
+  .art-upload-input{display:none;}
+  .locked-note{font-size:12px;color:var(--grey);font-style:italic;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 20px;border-radius:100px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:999;display:none;}
+  .back-link{background:none;color:var(--grey);font-size:13px;font-weight:600;margin-bottom:18px;display:inline-flex;align-items:center;gap:6px;}
+  .back-link:hover{color:var(--ink);}
+
+  /* ---- Intro do cliente ---- */
+  .intro-wrap{max-width:720px;margin:0 auto;padding:60px 32px;}
+  .intro-wrap .eyebrow{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+  .intro-wrap h1{font-size:32px;margin:0 0 8px;}
+  .intro-wrap .periodo{color:var(--grey);font-size:14px;margin:0 0 32px;}
+  .process-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;}
+  @media(max-width:640px){.process-steps{grid-template-columns:1fr;}}
+  .process-step{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:18px;}
+  .process-step .num{font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;}
+  .process-step h4{margin:0 0 6px;font-size:15px;}
+  .process-step p{margin:0;font-size:12.5px;color:var(--grey);line-height:1.5;}
+
+  /* ---- Calendário (lista) ---- */
+  .calendar-list{max-width:820px;margin:0 auto;padding:0 32px 60px;display:flex;flex-direction:column;gap:10px;}
+  .calendar-row{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .15s, transform .15s;}
+  .calendar-row:hover{border-color:var(--teal);transform:translateX(2px);}
+  .calendar-row .num{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--ink-soft);min-width:56px;}
+  .calendar-row .info{flex:1;min-width:0;}
+  .calendar-row .info .tema{font-weight:600;font-size:14px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .calendar-row .info .meta{font-size:12px;color:var(--grey);}
+  .calendar-row .arrow{color:var(--grey);font-size:18px;}
+
+  /* ---- Detalhe do post (estilo do template Eureca) ---- */
+  .post-detail-page{max-width:1000px;margin:0 auto;padding:32px;position:relative;}
+  .post-detail-blob{position:absolute;width:520px;height:520px;left:-140px;bottom:-80px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #C9A6F5 0%, #8FB6F0 45%, transparent 70%);filter:blur(70px);opacity:0.45;z-index:0;pointer-events:none;}
+  .post-detail-inner{position:relative;z-index:1;}
+  .post-detail-eyebrow{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;}
+  .post-detail-title{font-size:40px;color:var(--teal);margin:0 0 10px;}
+  .post-detail-subtitle{font-size:15px;font-weight:600;color:var(--ink-soft);margin-bottom:10px;}
+  .post-detail-meta{font-size:13px;font-weight:700;color:var(--ink-soft);line-height:1.8;margin-bottom:28px;}
+  .post-detail-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:36px;}
+  @media(max-width:760px){.post-detail-grid{grid-template-columns:1fr;}}
+  .pd-label{font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;position:relative;padding-top:14px;}
+  .pd-label::before{content:'';position:absolute;top:0;left:0;width:26px;height:3px;background:var(--teal);}
+  .pd-value{font-size:14px;line-height:1.6;white-space:pre-wrap;margin-bottom:24px;}
+  .pd-art-box{border:1.5px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--grey);font-size:13px;background:rgba(255,255,255,0.6);}
+  .pd-art-box img{max-width:100%;border-radius:10px;}
+  .pd-status-box{background:rgba(255,255,255,0.75);backdrop-filter:blur(2px);border-radius:14px;padding:18px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================== STATE ==================== */
+let state = {
+  view: 'setup', currentSlug: null, currentClient: null, clientsIndex: [],
+  genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null
+};
+
+function escapeHtml(str){ if(!str) return ''; return str.toString().replace(/[&<>"]/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
+function escapeAttr(str){ return escapeHtml(str); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer); t._timer = setTimeout(()=>{ t.style.display='none'; }, 2600);
+}
+
+/* ==================== CONFIGURAÇÃO DA API (URL do Apps Script) ==================== */
+function getApiUrl(){ return localStorage.getItem('eureca-api-url') || ''; }
+function setApiUrl(url){ localStorage.setItem('eureca-api-url', url); }
+
+/* ==================== PONTE COM O BACKEND (fetch, com fallback JSONP) ==================== */
+async function apiGet(action, params){
+  const url = new URL(getApiUrl());
+  url.searchParams.set('action', action);
+  Object.keys(params||{}).forEach(k=> url.searchParams.set(k, params[k]));
+  try{
+    const res = await fetch(url.toString());
+    if(!res.ok) throw new Error('http-'+res.status);
+    return await res.json();
+  }catch(e){
+    return await jsonpGet_(url.toString());
+  }
+}
+function jsonpGet_(url){
+  return new Promise((resolve, reject)=>{
+    const cb = 'cb_' + Math.random().toString(36).slice(2);
+    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 20000);
+    function cleanup(){ clearTimeout(timeoutId); delete window[cb]; if(script.parentNode) script.parentNode.removeChild(script); }
+    window[cb] = (data)=>{ cleanup(); resolve(data); };
+    const sep = url.indexOf('?')>=0 ? '&' : '?';
+    const script = document.createElement('script');
+    script.src = url + sep + 'callback=' + cb;
+    script.onerror = ()=>{ cleanup(); reject(new Error('script-error')); };
+    document.body.appendChild(script);
+  });
+}
+async function apiPost(action, payload){
+  const res = await fetch(getApiUrl(), { method:'POST', body: JSON.stringify(Object.assign({action}, payload)) });
+  if(!res.ok) throw new Error('http-'+res.status);
+  return await res.json();
+}
+
+/* Mapeamento de resposta do formulário -> briefing (feito no navegador, sem chamada de rede) */
+function mapRowToBrief(row){
+  const brief = { programa:'', tipoPrograma:'', objetivoEmail:'', areasVaga:'', sobreAreas:'', periodoInscricoes:'', faseTestes:'', beneficios:'', modalidade:'', ondeInscrever:'', motivoInteresse:'', requisitos:'', algoMais:'', cronograma:'', valorBolsa:'', mote:'', tomVoz:'', redes:'', sobreEmpresa:'' };
+  for(const key in row){
+    const k = key.toLowerCase(); const val = (row[key]||'').toString().trim();
+    if(!val) continue;
+    if(k.includes('carimbo') || k.includes('timestamp')) continue;
+    else if(k.includes('nome do programa')) brief.programa = val;
+    else if(k.includes('tipo de programa')) brief.tipoPrograma = val;
+    else if(k.includes('objetivo desse e-mail') || k.includes('objetivo desse email')) brief.objetivoEmail = val;
+    else if(k.includes('áreas de vaga') || k.includes('areas de vaga')) brief.areasVaga = val;
+    else if(k.includes('sei sobre essas áreas') || k.includes('sei sobre essas areas')) brief.sobreAreas = val;
+    else if(k.includes('período de inscri') || k.includes('periodo de inscri')) brief.periodoInscricoes = val;
+    else if(k.includes('fase de testes')) brief.faseTestes = val;
+    else if(k.includes('benefício') || k.includes('beneficio')) brief.beneficios = val;
+    else if(k.includes('modalidade de trabalho')) brief.modalidade = val;
+    else if(k.includes('onde a pessoa deve se inscrever')) brief.ondeInscrever = val;
+    else if(k.includes('interessar a base de leads') || k.includes('motivo')) brief.motivoInteresse = val;
+    else if(k.includes('requisito')) brief.requisitos = val;
+    else if(k.includes('não foi perguntado') || k.includes('nao foi perguntado')) brief.algoMais = val;
+    else if(k.includes('cronograma')) brief.cronograma = val;
+    else if(k.includes('bolsa') || k.includes('salário') || k.includes('salario')) brief.valorBolsa = val;
+    else if(k.includes('mote') || k.includes('conceito criativo')) brief.mote = val;
+    else if(k.includes('tom de voz')) brief.tomVoz = val;
+    else if(k.includes('redes sociais')) brief.redes = val;
+    else if(k.includes('sobre a empresa')) brief.sobreEmpresa = val;
+  }
+  return brief;
+}
+
+/* ==================== COMPRESSÃO DE IMAGEM ==================== */
+function compressImage(file, maxDim, quality){
+  maxDim = maxDim || 900; quality = quality || 0.72;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function guessRowLabel(row, i){
+  let ts='', name='';
+  for(const k in row){
+    const kl = k.toLowerCase();
+    if((kl.includes('carimbo') || kl.includes('timestamp')) && row[k]) ts = row[k];
+    if(kl.includes('nome do programa') && row[k] && !name) name = row[k];
+  }
+  return `${i+1}. ${name || 'Resposta sem nome identificado'}${ts ? ' — ' + ts : ''}`;
+}
+
+/* ==================== RENDER: ROOT ==================== */
+function render(){
+  const app = document.getElementById('app');
+  if(state.view==='setup') app.innerHTML = renderSetup();
+  else if(state.view==='welcome') app.innerHTML = renderWelcome();
+  else if(state.view==='team-login') app.innerHTML = renderTeamLogin();
+  else if(state.view==='team-dashboard') app.innerHTML = renderTeamDashboard();
+  else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
+  else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
+  else if(state.view==='team-generating') app.innerHTML = renderGenerating();
+  else if(state.view==='team-review') app.innerHTML = renderBoard(true);
+  else if(state.view==='client-login') app.innerHTML = renderClientLogin();
+  else if(state.view==='client-intro') app.innerHTML = renderClientIntro();
+  else if(state.view==='client-calendar') app.innerHTML = renderClientCalendar();
+  else if(state.view==='client-post') app.innerHTML = renderClientPostDetail();
+  else if(state.view==='client-board') app.innerHTML = renderBoard(false);
+  attachHandlers();
+}
+
+function renderSetup(){
+  return `
+  <div class="center-wrap"><div class="blob b1"></div><div class="blob b2"></div>
+    <div class="auth-card">
+      <div class="eyebrow">Configuração inicial</div>
+      <h1>Conectar à planilha</h1>
+      <p class="sub">Cole a URL do Apps Script (a que termina em /exec). Isso só precisa ser feito uma vez neste navegador.</p>
+      <div class="field"><label>URL da API (Apps Script)</label><input type="text" id="setup-url" placeholder="https://script.google.com/macros/s/.../exec" value="${escapeAttr(getApiUrl())}" /></div>
+      <div class="error-msg" id="setup-error" style="display:none;">Cole uma URL válida.</div>
+      <button class="btn-primary" id="setup-save">Salvar e continuar</button>
+    </div>
+  </div>`;
+}
+
+function renderWelcome(){
+  return `
+  <div class="center-wrap"><div class="blob b1"></div><div class="blob b2"></div>
+    <div class="auth-card">
+      <div class="eyebrow">Eureca · Conteúdo</div>
+      <h1>Plano de Conteúdos</h1>
+      <p class="sub">Gere, revise e acompanhe o plano de conteúdo do mês num só lugar — da copy à publicação.</p>
+      <div class="field">
+        <button class="btn-primary" id="go-team" style="margin-bottom:10px;">Sou da equipe (especialista)</button>
+        <button class="btn-primary btn-mint" id="go-client">Sou cliente — ver meu plano</button>
+      </div>
+      <button class="link-btn" id="change-api-url" style="margin-top:16px;">Trocar configuração de conexão</button>
+    </div>
+  </div>`;
+}
+function renderTeamLogin(){
+  return `
+  <div class="center-wrap"><div class="blob b1"></div><div class="blob b2"></div>
+    <div class="auth-card">
+      <button class="link-btn" id="back-welcome" style="margin-bottom:16px;">&larr; voltar</button>
+      <div class="eyebrow">Acesso da equipe</div>
+      <h1>Entrar</h1>
+      <p class="sub">Senha compartilhada entre as especialistas dos 6 times.</p>
+      <div class="field"><label>Senha da equipe</label><input type="password" id="team-pass" placeholder="•••••••••" /></div>
+      <div class="error-msg" id="team-error" style="display:none;">Senha incorreta.</div>
+      <button class="btn-primary" id="team-submit">Entrar</button>
+    </div>
+  </div>`;
+}
+function renderClientLogin(){
+  return `
+  <div class="center-wrap"><div class="blob b1"></div><div class="blob b2"></div>
+    <div class="auth-card">
+      <button class="link-btn" id="back-welcome" style="margin-bottom:16px;">&larr; voltar</button>
+      <div class="eyebrow">Acesso do cliente</div>
+      <h1>Ver meu plano</h1>
+      <p class="sub">Digite o nome do programa exatamente como combinado com a equipe Eureca.</p>
+      <div class="field"><label>Nome do programa</label><input type="text" id="client-name" placeholder="Ex: Programa de Estágio Banco BV" /></div>
+      <div class="error-msg" id="client-error" style="display:none;">Não encontramos um plano com esse nome.</div>
+      <button class="btn-primary" id="client-submit">Ver plano</button>
+    </div>
+  </div>`;
+}
+
+function renderTeamDashboard(){
+  const cards = state.clientsIndex.map(c=>{
+    const total = c.totalPosts||0, copyOk = c.copyAprovado||0, artOk = c.arteAprovada||0, pub = c.publicado||0;
+    return `
+    <div class="client-card" data-slug="${c.slug}">
+      <h3>${escapeHtml(c.name)}</h3>
+      <div style="font-size:12px;color:var(--grey)">${total} posts no plano</div>
+      <div class="status-row">
+        <span class="chip ok">${copyOk} copy aprovada</span>
+        <span class="chip info">${artOk} arte aprovada</span>
+        <span class="chip pending">${pub} publicados</span>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca · Painel da equipe</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="main">
+      <div class="main-header"><div><h1>Clientes</h1><p>Todos os times veem todos os clientes. Crie um novo plano ou acompanhe o andamento.</p></div></div>
+      ${state.clientsIndex.length ? `<div class="client-grid">${cards}</div>` : `<div class="empty-state">Nenhum cliente ainda. Clique em "Novo plano" para começar.</div>`}
+    </div>
+    <button class="fab" id="new-plan">+ Novo plano</button>
+  </div>`;
+}
+
+function renderBriefForm(editMode){
+  const b = editMode ? (state.currentClient.brief || {}) : {};
+  const v = (val) => escapeAttr(val || '');
+  const total = editMode ? (state.currentClient.posts ? state.currentClient.posts.length : 10) : 10;
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca · Painel da equipe</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="main">
+      <button class="back-link" id="${editMode ? 'back-review' : 'back-dashboard'}">&larr; ${editMode ? 'Voltar ao plano' : 'Voltar aos clientes'}</button>
+      <div class="form-card">
+        <h2>${editMode ? 'Editar informações do programa' : 'Novo plano de conteúdo'}</h2>
+        <p class="hint">${editMode ? 'Atualize os dados que mudaram desde a resposta inicial.' : 'Escolha uma resposta do formulário ou preencha manualmente abaixo.'}</p>
+
+        ${!editMode ? `<div class="field" style="border:1.5px dashed var(--line);padding:16px;border-radius:12px;background:var(--paper-dim);">
+          <label>Importar resposta do formulário</label>
+          <select id="response-select" style="margin-top:8px;"><option value="">Carregando respostas...</option></select>
+        </div>` : ''}
+
+        <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Sobre o programa</h3>
+        <div class="grid-2">
+          <div class="field"><label>Nome do programa</label><input type="text" id="f-programa" placeholder="Ex: Programa de Estágio Banco BV" value="${v(b.programa)}" ${editMode?'disabled':''} /></div>
+          <div class="field"><label>Tipo de programa</label><input type="text" id="f-tipoPrograma" placeholder="Ex: Estágio, Trainee" value="${v(b.tipoPrograma)}" /></div>
+        </div>
+        <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
+        <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
+        <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: Agosto a Setembro/2026" value="${v(b.periodoAtracao)}" /></div>
+
+        <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
+        <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
+        <div class="field"><label>O que sabemos sobre essas áreas na empresa</label><textarea id="f-sobreAreas">${escapeHtml(b.sobreAreas)}</textarea></div>
+        <div class="field"><label>Benefícios oferecidos</label><textarea id="f-beneficios">${escapeHtml(b.beneficios)}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Modalidade de trabalho</label><input type="text" id="f-modalidade" value="${v(b.modalidade)}" /></div>
+          <div class="field"><label>Valor da bolsa/salário</label><input type="text" id="f-valorBolsa" value="${v(b.valorBolsa)}" /></div>
+        </div>
+        <div class="field"><label>Requisitos exigidos</label><textarea id="f-requisitos">${escapeHtml(b.requisitos)}</textarea></div>
+
+        <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Processo seletivo</h3>
+        <div class="grid-2">
+          <div class="field"><label>Período de inscrições</label><input type="text" id="f-periodoInscricoes" value="${v(b.periodoInscricoes)}" /></div>
+          <div class="field"><label>Onde se inscrever</label><input type="text" id="f-ondeInscrever" value="${v(b.ondeInscrever)}" /></div>
+        </div>
+        <div class="field"><label>O que fazer para completar a fase de testes</label><textarea id="f-faseTestes">${escapeHtml(b.faseTestes)}</textarea></div>
+        <div class="field"><label>Cronograma pós-inscrição</label><textarea id="f-cronograma">${escapeHtml(b.cronograma)}</textarea></div>
+
+        <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Estratégia e tom</h3>
+        <div class="field"><label>Por que interessa à base de leads</label><textarea id="f-motivoInteresse">${escapeHtml(b.motivoInteresse)}</textarea></div>
+        <div class="field"><label>Mote ou conceito criativo</label><input type="text" id="f-mote" value="${v(b.mote)}" /></div>
+        <div class="field"><label>Diretrizes de tom de voz</label><textarea id="f-tomVoz">${escapeHtml(b.tomVoz)}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Redes sociais desta campanha</label><input type="text" id="f-redes" value="${v(b.redes)}" /></div>
+          <div class="field"><label>Quantidade de posts</label>
+            <div class="range-row"><input type="range" id="f-total" min="4" max="12" value="${total}" /><span class="range-val" id="f-total-val">${total}</span></div>
+          </div>
+        </div>
+        <div class="field"><label>Algo que não foi perguntado</label><textarea id="f-algoMais">${escapeHtml(b.algoMais)}</textarea></div>
+
+        <div class="error-msg" id="brief-error" style="display:none;">Preencha ao menos o nome do programa e "Sobre a empresa".</div>
+        ${editMode ? `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn-primary" id="save-brief-only" style="flex:1;background:var(--ink-soft);">Salvar sem regenerar</button>
+          <button class="btn-primary btn-mint" id="save-and-regen" style="flex:1;">Salvar e regenerar plano</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--grey);margin-top:10px;line-height:1.5;">"Salvar sem regenerar" mantém os posts, status e comentários. "Salvar e regenerar" cria um plano novo e substitui tudo.</p>`
+        : `<button class="btn-primary" id="brief-submit">Gerar plano com IA</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGenerating(){
+  return `<div class="screen"><div class="main"><div class="progress-wrap">
+    <div class="spinner"></div><h2>Gerando o plano de conteúdo</h2>
+    <div class="progress-bar"><div class="progress-bar-fill" style="width:${state.genProgress.pct}%"></div></div>
+    <div class="progress-log">${state.genProgress.log}</div>
+  </div></div></div>`;
+}
+
+/* ==================== CLIENTE: INTRODUÇÃO ==================== */
+function renderClientIntro(){
+  const client = state.currentClient;
+  const periodo = client.brief.periodoAtracao || client.brief.periodoInscricoes || '';
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="intro-wrap">
+      <div class="eyebrow">Plano de conteúdos</div>
+      <h1>${escapeHtml(client.name)}</h1>
+      ${periodo ? `<p class="periodo">Período de atração: ${escapeHtml(periodo)}</p>` : ''}
+      <p style="font-size:14.5px;line-height:1.7;color:var(--ink-soft);margin-bottom:32px;">
+        Aqui você vai acompanhar todo o plano de conteúdo criado para o seu programa. Veja como funciona o processo de aprovação:
+      </p>
+      <div class="process-steps">
+        <div class="process-step">
+          <div class="num">1. Envio</div>
+          <h4>Legendas e peças</h4>
+          <p>Você terá acesso às legendas, copys e, conforme forem criadas, às peças gráficas de cada post.</p>
+        </div>
+        <div class="process-step">
+          <div class="num">2. Alteração</div>
+          <h4>Seus comentários</h4>
+          <p>Pode comentar e pedir ajustes em qualquer post. A equipe recebe e atualiza o material.</p>
+        </div>
+        <div class="process-step">
+          <div class="num">3. Publicação</div>
+          <h4>Aprovado, no ar</h4>
+          <p>Após aprovado, o post é agendado e publicado nas redes definidas.</p>
+        </div>
+      </div>
+      <button class="btn-primary btn-mint" id="go-calendar" style="max-width:280px;">Ver calendário de posts</button>
+    </div>
+  </div>`;
+}
+
+/* ==================== CLIENTE: CALENDÁRIO GERAL ==================== */
+function renderClientCalendar(){
+  const client = state.currentClient;
+  const rows = client.posts.map((p, idx)=>`
+    <div class="calendar-row" data-idx="${idx}">
+      <span class="num">Post ${idx+1}</span>
+      <div class="info">
+        <div class="tema">${escapeHtml(p.tema)}</div>
+        <div class="meta">${escapeHtml(p.formato||'—')} · ${escapeHtml(p.data||'A definir')}</div>
+      </div>
+      <span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span>
+      <span class="arrow">&rarr;</span>
+    </div>`).join('');
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="main" style="padding-bottom:0;">
+      <button class="back-link" id="back-intro">&larr; Voltar</button>
+      <div class="main-header"><div><h1>Calendário de conteúdos</h1><p>Clique em um post para ver os detalhes e comentar.</p></div></div>
+    </div>
+    <div class="calendar-list">${rows}</div>
+  </div>`;
+}
+
+/* ==================== CLIENTE: DETALHE DO POST (estilo do template) ==================== */
+function renderClientPostDetail(){
+  const client = state.currentClient;
+  const idx = state.currentPostIdx;
+  const p = client.posts[idx];
+
+  const copyComments = (p.copyComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
+  const copyActions = p.copyStatus !== 'aprovado' ? `
+    <div class="comment-input-row"><input type="text" placeholder="Deixe um comentário sobre a copy..." class="copy-comment-box" data-idx="${idx}" /></div>
+    <div class="action-row" style="margin-top:8px;">
+      <button class="btn-approve" data-idx="${idx}" data-action="aprovado">Aprovar copy</button>
+      <button class="btn-change" data-idx="${idx}" data-action="alteracao">Pedir alteração</button>
+    </div>` : '';
+
+  const artUnlocked = p.copyStatus === 'aprovado';
+  let artBlock = '';
+  if(!artUnlocked){
+    artBlock = `<div class="pd-art-box">A arte aparece aqui assim que a copy for aprovada.</div>`;
+  } else if(p.artImageUrl){
+    const artComments = (p.artComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
+    const artActions = p.artStatus === 'enviada' ? `
+      <div class="comment-input-row" style="margin-top:10px;"><input type="text" placeholder="Comentário sobre a arte..." class="art-comment-box" data-idx="${idx}" /></div>
+      <div class="action-row" style="margin-top:8px;">
+        <button class="btn-approve" data-idx="${idx}" data-artaction="aprovada">Aprovar arte</button>
+        <button class="btn-change" data-idx="${idx}" data-artaction="alteracao">Pedir alteração</button>
+      </div>` : '';
+    artBlock = `<div class="pd-art-box" style="text-align:left;"><img src="${escapeAttr(p.artImageUrl)}" alt="Arte do post" />
+      <div style="margin-top:10px;"><span class="status-pill ${p.artStatus}">${statusLabel('art',p.artStatus)}</span></div>
+      ${artComments ? `<div class="comment-list" style="margin-top:8px;">${artComments}</div>` : ''}
+      ${artActions}</div>`;
+  } else {
+    artBlock = `<div class="pd-art-box">Espaço pra por arte — aguardando a equipe enviar.</div>`;
+  }
+
+  return `
+  <div class="screen" style="background:var(--paper-dim);">
+    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="post-detail-page">
+      <div class="post-detail-blob"></div>
+      <div class="post-detail-inner">
+        <button class="back-link" id="back-calendar">&larr; Voltar ao calendário</button>
+        <div class="post-detail-eyebrow">Plano de conteúdos — ${escapeHtml(client.name)}</div>
+        <h1 class="post-detail-title">Post ${idx+1}</h1>
+        <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
+        <div class="post-detail-meta">
+          DATA DA POSTAGEM: ${escapeHtml(p.data||'A definir')}<br>
+          HORÁRIO: ${escapeHtml(p.horario||'A definir')}
+        </div>
+
+        <div class="post-detail-grid">
+          <div>
+            <div class="pd-label">Copy</div>
+            <div class="pd-value">${escapeHtml(p.copy)}</div>
+            ${p.roteiro ? `<div class="pd-label">Roteiro</div><div class="pd-value">${escapeHtml(p.roteiro)}</div>` : ''}
+            <div class="pd-label">Espaço pra arte</div>
+            ${artBlock}
+          </div>
+          <div>
+            <div class="pd-label">Legenda</div>
+            <div class="pd-value">${escapeHtml(p.legenda)}</div>
+
+            <div class="pd-status-box">
+              <div class="pd-label" style="padding-top:0;">Status</div>
+              <span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span>
+              <div class="pd-label" style="margin-top:18px;">Observação / comentário</div>
+              ${copyComments ? `<div class="comment-list">${copyComments}</div>` : '<p style="font-size:12.5px;color:var(--grey);">Nenhum comentário ainda.</p>'}
+              ${copyActions}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+
+function renderBoard(isTeam){
+  const client = state.currentClient;
+  if(!client) return `<div class="main">Cliente não encontrado.</div>`;
+  const posts = client.posts;
+  const copyOk = posts.filter(p=>p.copyStatus==='aprovado').length;
+  const arteOk = posts.filter(p=>p.artStatus==='aprovada').length;
+  const publicados = posts.filter(p=>p.pubStatus==='publicado').length;
+
+  const cards = posts.map((p, idx)=>{
+    return `
+    <div class="post-card">
+      <div class="post-card-top">
+        <div class="post-card-tags"><span class="tag format">${escapeHtml(p.formato||'—')}</span><span class="tag">${escapeHtml(p.canais||'—')}</span></div>
+        <h3>${escapeHtml(p.tema)}</h3>
+      </div>
+      <div class="post-card-body">
+        ${p.legenda ? `<div class="field-block"><div class="label">Legenda</div><div class="value">${escapeHtml(p.legenda)}</div></div>` : ''}
+        <div class="field-block"><div class="label">Copy</div><div class="value">${escapeHtml(p.copy)}</div></div>
+        ${p.roteiro ? `<div class="field-block"><div class="label">Roteiro</div><div class="value">${escapeHtml(p.roteiro)}</div></div>` : ''}
+        ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
+      </div>
+      ${renderCopyStage(p, idx, isTeam)}
+      ${renderArtStage(p, idx, isTeam)}
+      ${renderPubStage(p, idx, isTeam)}
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="screen">
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span>Eureca</div>
+      <div class="topbar-actions">
+        ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
+      </div>
+    </div>
+    <div class="board-header"><div class="blob"></div>
+      <div class="board-header-inner">
+        <div class="eyebrow">Plano de conteúdos</div>
+        <h1>${escapeHtml(client.name)}</h1>
+        <p>${isTeam ? 'Revise comentários, decida sobre sugestões da IA, suba artes e controle os status.' : 'Veja o plano do mês, comente e aprove copy e arte.'}</p>
+        <div class="summary-bar">
+          <div class="summary-item"><b>${posts.length}</b>posts</div>
+          <div class="summary-item"><b>${copyOk}</b>copy aprovada</div>
+          <div class="summary-item"><b>${arteOk}</b>arte aprovada</div>
+          <div class="summary-item"><b>${publicados}</b>publicados</div>
+        </div>
+      </div>
+    </div>
+    <div class="board">${cards}</div>
+  </div>`;
+}
+
+function statusLabel(kind, val){
+  const map = {
+    copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração'},
+    art: {aguardando:'Aguardando arte', enviada:'Arte enviada', aprovada:'Arte aprovada', alteracao:'Ajuste na arte pedido'},
+    pub: {nao_agendado:'Não agendado', agendado:'Agendado', publicado:'Publicado'}
+  };
+  return map[kind][val] || val;
+}
+
+function renderCopyStage(p, idx, isTeam){
+  const comments = (p.copyComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
+  const suggestion = (isTeam && p.aiSuggestion) ? `
+    <div class="ai-suggestion">
+      <div class="label">💡 Sugestão de ajuste da IA (baseada no comentário do cliente)</div>
+      <div class="value"><b>Legenda:</b> ${escapeHtml(p.aiSuggestion.legenda)}</div>
+      <div class="value"><b>Copy:</b> ${escapeHtml(p.aiSuggestion.copy)}</div>
+      ${p.aiSuggestion.roteiro ? `<div class="value"><b>Roteiro:</b> ${escapeHtml(p.aiSuggestion.roteiro)}</div>` : ''}
+      <div class="ai-suggestion-actions">
+        <button class="btn-approve accept-suggestion" data-idx="${idx}">Aceitar</button>
+        <button class="btn-change edit-suggestion" data-idx="${idx}">Editar antes</button>
+        <button class="btn-change discard-suggestion" data-idx="${idx}">Descartar</button>
+      </div>
+    </div>` : '';
+
+  const adminEdit = isTeam ? `
+    <div class="admin-post-edit">
+      <div class="field-block"><div class="label">Editar tema</div><input type="text" class="edit-tema" data-idx="${idx}" value="${escapeAttr(p.tema)}" /></div>
+      <div class="grid-2">
+        <div class="field-block"><div class="label">Data da postagem</div><input type="text" class="edit-data" data-idx="${idx}" value="${escapeAttr(p.data||'A definir')}" /></div>
+        <div class="field-block"><div class="label">Horário</div><input type="text" class="edit-horario" data-idx="${idx}" value="${escapeAttr(p.horario||'A definir')}" /></div>
+      </div>
+      <div class="field-block"><div class="label">Editar copy</div><textarea class="edit-copy" data-idx="${idx}">${escapeHtml(p.copy)}</textarea></div>
+      <div class="field-block"><div class="label">Editar legenda</div><textarea class="edit-legenda" data-idx="${idx}">${escapeHtml(p.legenda)}</textarea></div>
+      <div class="edit-actions">
+        <button class="btn-small btn-ghost save-edit" data-idx="${idx}">Salvar edição</button>
+        <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar com IA</button>
+      </div>
+    </div>` : '';
+
+  const clientActions = (!isTeam && p.copyStatus !== 'aprovado') ? `
+    <div class="comment-input-row"><input type="text" placeholder="Deixe um comentário sobre a copy..." class="copy-comment-box" data-idx="${idx}" /></div>
+    <div class="action-row" style="margin-top:8px;">
+      <button class="btn-approve" data-idx="${idx}" data-action="aprovado">Aprovar copy</button>
+      <button class="btn-change" data-idx="${idx}" data-action="alteracao">Pedir alteração</button>
+    </div>` : '';
+
+  return `
+  <div class="stage">
+    <div class="stage-head"><span class="stage-title">Etapa 1 · Copy</span><span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span></div>
+    ${comments ? `<div class="comment-list">${comments}</div>` : ''}
+    ${suggestion}
+    ${adminEdit}
+    ${clientActions}
+  </div>`;
+}
+
+function renderArtStage(p, idx, isTeam){
+  const unlocked = p.copyStatus === 'aprovado';
+  if(!unlocked){
+    return `<div class="stage"><div class="stage-head"><span class="stage-title">Etapa 2 · Arte</span><span class="status-pill locked">Bloqueado</span></div><div class="locked-note">Libera quando a copy for aprovada.</div></div>`;
+  }
+  const comments = (p.artComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
+  const imgTag = p.artImageUrl ? `<img class="art-preview" src="${escapeAttr(p.artImageUrl)}" alt="Arte do post" />` : '';
+
+  const teamControls = isTeam ? `
+    <label class="art-upload-label">${p.artImageUrl ? 'Trocar arte' : 'Subir arte'}<input type="file" accept="image/*" class="art-upload-input upload-art" data-idx="${idx}" /></label>
+  ` : '';
+
+  const clientActions = (!isTeam && p.artStatus === 'enviada') ? `
+    <div class="comment-input-row"><input type="text" placeholder="Comentário sobre a arte..." class="art-comment-box" data-idx="${idx}" /></div>
+    <div class="action-row" style="margin-top:8px;">
+      <button class="btn-approve" data-idx="${idx}" data-artaction="aprovada">Aprovar arte</button>
+      <button class="btn-change" data-idx="${idx}" data-artaction="alteracao">Pedir alteração</button>
+    </div>` : '';
+
+  return `
+  <div class="stage">
+    <div class="stage-head"><span class="stage-title">Etapa 2 · Arte</span><span class="status-pill ${p.artStatus}">${statusLabel('art',p.artStatus)}</span></div>
+    ${imgTag}
+    ${teamControls}
+    ${comments ? `<div class="comment-list" style="margin-top:8px;">${comments}</div>` : ''}
+    ${clientActions}
+  </div>`;
+}
+
+function renderPubStage(p, idx, isTeam){
+  const unlocked = p.artStatus === 'aprovada';
+  if(!unlocked){
+    return `<div class="stage"><div class="stage-head"><span class="stage-title">Etapa 3 · Publicação</span><span class="status-pill locked">Bloqueado</span></div><div class="locked-note">Libera quando a arte for aprovada.</div></div>`;
+  }
+  const teamControls = isTeam ? `
+    <div class="action-row">
+      <button class="btn-change set-pub" data-idx="${idx}" data-pub="agendado">Marcar agendado</button>
+      <button class="btn-approve set-pub" data-idx="${idx}" data-pub="publicado">Marcar publicado</button>
+    </div>` : '';
+  return `
+  <div class="stage">
+    <div class="stage-head"><span class="stage-title">Etapa 3 · Publicação</span><span class="status-pill ${p.pubStatus}">${statusLabel('pub',p.pubStatus)}</span></div>
+    ${teamControls}
+  </div>`;
+}
+
+/* ==================== HANDLERS ==================== */
+function attachHandlers(){
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => document.querySelectorAll(sel);
+
+  if($('#setup-save')){
+    $('#setup-save').onclick = ()=>{
+      const url = $('#setup-url').value.trim();
+      if(!url || url.indexOf('http')!==0){ $('#setup-error').style.display='block'; return; }
+      setApiUrl(url);
+      state.view = 'welcome'; render();
+    };
+  }
+  if($('#change-api-url')){
+    $('#change-api-url').onclick = ()=>{ state.view='setup'; render(); };
+  }
+
+  if($('#go-team')) $('#go-team').onclick = ()=>{ state.view='team-login'; render(); };
+  if($('#go-client')) $('#go-client').onclick = ()=>{ state.view='client-login'; render(); };
+  if($('#back-welcome')) $('#back-welcome').onclick = ()=>{ state.view='welcome'; render(); };
+  if($('#logout')) $('#logout').onclick = ()=>{ state = {...state, view:'welcome', currentSlug:null, currentClient:null}; render(); };
+  if($('#back-dashboard')) $('#back-dashboard').onclick = async ()=>{ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); };
+  if($('#edit-brief')) $('#edit-brief').onclick = ()=>{ state.view='team-edit-brief'; render(); };
+  if($('#back-review')) $('#back-review').onclick = ()=>{ state.view='team-review'; render(); };
+
+  if($('#team-submit')){
+    $('#team-submit').onclick = async ()=>{
+      const ok = await apiGet('checkTeamPasscode', {pass: $('#team-pass').value});
+      if(ok){ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); }
+      else { $('#team-error').style.display='block'; }
+    };
+  }
+  if($('#client-submit')){
+    $('#client-submit').onclick = async ()=>{
+      const name = $('#client-name').value.trim();
+      const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      const client = await apiGet('getClient', {slug});
+      if(client){ state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); }
+      else { $('#client-error').style.display='block'; }
+    };
+  }
+  if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view='client-calendar'; render(); };
+  if($('#back-intro')) $('#back-intro').onclick = ()=>{ state.view='client-intro'; render(); };
+  if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view='client-calendar'; render(); };
+  $$('.calendar-row').forEach(row=>{
+    row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.view='client-post'; render(); };
+  });
+  if($('#new-plan')) $('#new-plan').onclick = ()=>{ state.view='team-brief'; render(); };
+  if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; };
+
+  if($('#response-select')){
+    (async ()=>{
+      const rows = await apiGet('getFormResponses');
+      state.formResponses = rows;
+      const sel = $('#response-select');
+      sel.innerHTML = '<option value="">Selecione uma resposta...</option>' + rows.map((row,i)=>`<option value="${i}">${escapeHtml(guessRowLabel(row,i))}</option>`).join('');
+      sel.onchange = async (e)=>{
+        const v = e.target.value; if(v==='') return;
+        const brief = mapRowToBrief(rows[parseInt(v,10)]);
+        fillBriefForm(brief);
+        showToast('Campos preenchidos. Revise e edite antes de gerar.');
+      };
+    })();
+  }
+
+  function fillBriefForm(brief){
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+    ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
+      set('f-'+f, brief[f]);
+    });
+  }
+  function readBriefFromForm(){
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const b = {};
+    fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
+    return b;
+  }
+
+  if($('#brief-submit')){
+    $('#brief-submit').onclick = async ()=>{
+      const programa = $('#f-programa').value.trim();
+      const sobreEmpresa = $('#f-sobreEmpresa').value.trim();
+      if(!programa || !sobreEmpresa){ $('#brief-error').style.display='block'; return; }
+      const brief = readBriefFromForm();
+      const total = parseInt($('#f-total').value, 10);
+      const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA (pode levar 1-2 minutos)...'}; render();
+      const posts = await apiPost('generatePlan', {brief, total});
+
+      const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
+      await apiPost('saveClient', {client: clientRecord});
+      state.clientsIndex = await apiGet('getClientsIndex');
+      state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+      showToast('Plano gerado com sucesso!');
+    };
+  }
+
+  if($('#save-brief-only')){
+    $('#save-brief-only').onclick = async ()=>{
+      if(!$('#f-sobreEmpresa').value.trim()){ $('#brief-error').style.display='block'; return; }
+      const newBrief = readBriefFromForm();
+      newBrief.programa = state.currentClient.brief.programa;
+      state.currentClient.brief = newBrief;
+      await apiPost('saveClient', {client: state.currentClient});
+      state.view = 'team-review'; render();
+      showToast('Informações do programa atualizadas.');
+    };
+  }
+  if($('#save-and-regen')){
+    $('#save-and-regen').onclick = async ()=>{
+      if(!$('#f-sobreEmpresa').value.trim()){ $('#brief-error').style.display='block'; return; }
+      if(!window.confirm('Isso vai gerar um plano novo e substituir todos os posts, status e comentários atuais. Continuar?')) return;
+      const newBrief = readBriefFromForm();
+      newBrief.programa = state.currentClient.brief.programa;
+      const total = parseInt($('#f-total').value, 10);
+      const slug = state.currentClient.slug, nome = state.currentClient.name;
+
+      state.view='team-generating'; state.genProgress = {pct:10, log:'Gerando posts com IA...'}; render();
+      const posts = await apiPost('generatePlan', {brief: newBrief, total});
+
+      const clientRecord = { name: nome, slug, brief: newBrief, posts, createdAt: state.currentClient.createdAt, updatedAt: new Date().toISOString() };
+      await apiPost('saveClient', {client: clientRecord});
+      state.clientsIndex = await apiGet('getClientsIndex');
+      state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-review'; render();
+      showToast('Plano regenerado!');
+    };
+  }
+
+  $$('.client-card').forEach(card=>{
+    card.onclick = async ()=>{
+      const slug = card.getAttribute('data-slug');
+      state.currentSlug = slug; state.currentClient = await apiGet('getClient', {slug});
+      state.view = 'team-review'; render();
+    };
+  });
+
+  $$('.action-row [data-action]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const action = btn.getAttribute('data-action');
+      const input = document.querySelector(`.copy-comment-box[data-idx="${idx}"]`);
+      const text = input ? input.value.trim() : '';
+      const post = state.currentClient.posts[idx];
+      post.copyStatus = action;
+      if(text){ post.copyComments = post.copyComments || []; post.copyComments.push({author:'Cliente', text, date:new Date().toLocaleDateString('pt-BR')}); }
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast(action==='aprovado' ? 'Copy aprovada!' : 'Pedido enviado. A equipe vai receber uma sugestão de ajuste da IA.');
+      if(action === 'alteracao' && text){
+        const suggestion = await apiPost('generateSuggestion', {brief: state.currentClient.brief, post, comentario: text});
+        if(suggestion){ post.aiSuggestion = suggestion; await apiPost('saveClient', {client: state.currentClient}); }
+      }
+    };
+  });
+
+  $$('[data-artaction]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const action = btn.getAttribute('data-artaction');
+      const input = document.querySelector(`.art-comment-box[data-idx="${idx}"]`);
+      const text = input ? input.value.trim() : '';
+      const post = state.currentClient.posts[idx];
+      post.artStatus = action;
+      if(text){ post.artComments = post.artComments || []; post.artComments.push({author:'Cliente', text, date:new Date().toLocaleDateString('pt-BR')}); }
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast(action==='aprovada' ? 'Arte aprovada!' : 'Pedido de ajuste na arte enviado.');
+    };
+  });
+
+  $$('.accept-suggestion').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const post = state.currentClient.posts[idx];
+      const s = post.aiSuggestion;
+      if(s){ post.tema=s.tema; post.formato=s.formato; post.canais=s.canais; post.copy=s.copy; post.legenda=s.legenda; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
+      await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Sugestão aplicada ao post.');
+    };
+  });
+  $$('.edit-suggestion').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const post = state.currentClient.posts[idx];
+      const s = post.aiSuggestion;
+      if(s){ post.copy=s.copy; post.legenda=s.legenda; post.roteiro=s.roteiro; post.copyStatus='pendente'; post.aiSuggestion=null; }
+      await apiPost('saveClient', {client: state.currentClient}); render();
+      showToast('Sugestão carregada nos campos de edição — ajuste como quiser e salve.');
+    };
+  });
+  $$('.discard-suggestion').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      state.currentClient.posts[idx].aiSuggestion = null;
+      await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Sugestão descartada.');
+    };
+  });
+
+  $$('.save-edit').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const tema = document.querySelector(`.edit-tema[data-idx="${idx}"]`);
+      const data = document.querySelector(`.edit-data[data-idx="${idx}"]`);
+      const horario = document.querySelector(`.edit-horario[data-idx="${idx}"]`);
+      const copy = document.querySelector(`.edit-copy[data-idx="${idx}"]`);
+      const legenda = document.querySelector(`.edit-legenda[data-idx="${idx}"]`);
+      const post = state.currentClient.posts[idx];
+      if(tema) post.tema = tema.value;
+      if(data) post.data = data.value;
+      if(horario) post.horario = horario.value;
+      if(copy) post.copy = copy.value;
+      if(legenda) post.legenda = legenda.value;
+      post.copyStatus = 'pendente';
+      await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Post atualizado.');
+    };
+  });
+  $$('.regen-post').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      btn.textContent = 'Gerando...'; btn.disabled = true;
+      const client = state.currentClient;
+      const others = client.posts.filter((_,i)=>i!==idx);
+      const newPost = await apiPost('regeneratePost', {brief: client.brief, index: idx+1, total: client.posts.length, outrosPosts: others});
+      newPost.copyStatus = 'pendente';
+      state.currentClient.posts[idx] = newPost;
+      await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Post regenerado.');
+    };
+  });
+
+  $$('.upload-art').forEach(input=>{
+    input.onchange = async (e)=>{
+      const idx = parseInt(input.getAttribute('data-idx'),10);
+      const file = e.target.files[0];
+      if(!file) return;
+      showToast('Enviando arte...');
+      try{
+        const dataUrl = await compressImage(file);
+        const post = state.currentClient.posts[idx];
+        const url = await apiPost('uploadArt', {slug: state.currentClient.slug, postId: post.id, dataUrl});
+        post.artImageUrl = url;
+        post.artStatus = 'enviada';
+        await apiPost('saveClient', {client: state.currentClient});
+        render();
+        showToast('Arte enviada! O cliente já pode revisar.');
+      }catch(err){
+        showToast('Erro ao processar a imagem.');
+      }
+    };
+  });
+
+  $$('.set-pub').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const pub = btn.getAttribute('data-pub');
+      state.currentClient.posts[idx].pubStatus = pub;
+      await apiPost('saveClient', {client: state.currentClient}); render();
+      showToast(pub==='publicado' ? 'Post marcado como publicado!' : 'Post agendado.');
+    };
+  });
+}
+
+if(getApiUrl()) state.view = 'welcome';
+render();
+</script>
+</body>
+</html>
