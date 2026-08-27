@@ -33,7 +33,7 @@
 
   .center-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px;position:relative;overflow:hidden;}
   .center-wrap::before{content:'';position:fixed;inset:0;background:var(--ink);z-index:-1;}
-  .blob{position:absolute;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #C9A6F5 0%, #8FB6F0 45%, transparent 70%);filter:blur(60px);opacity:0.55;pointer-events:none;}
+  .blob{position:fixed;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #C9A6F5 0%, #8FB6F0 45%, transparent 70%);filter:blur(60px);opacity:0.55;pointer-events:none;z-index:-1;}
   .blob.b1{bottom:-260px;left:-160px;} .blob.b2{top:-220px;right:-200px;opacity:0.35;}
   .auth-card{position:relative;z-index:1;background:var(--paper);border-radius:20px;padding:44px 40px;max-width:420px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,0.35);}
   .auth-card .eyebrow{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
@@ -727,17 +727,14 @@ function renderClientPostDetail(isTeam){
 
         <div class="post-detail-grid">
           <div>
-            <div class="pd-label">Copy</div>
-            <div class="pd-value">${escapeHtml(p.copy)}</div>
+            ${renderFieldCollapse(idx, isTeam, 'copy', null, 'Copy', p.copy)}
             ${p.roteiro ? `<div class="pd-label">Roteiro</div><div class="pd-value">${escapeHtml(p.roteiro)}</div>` : ''}
             ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
             <div class="pd-label">Espaço pra arte</div>
             ${renderArtStage(p, idx, isTeam)}
           </div>
           <div>
-            ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>`
-              <div class="pd-label">Legenda ${escapeHtml(canal)}</div>
-              <div class="pd-value">${escapeHtml(p.legendas[canal])}</div>`).join('')}
+            ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>renderFieldCollapse(idx, isTeam, 'legenda', canal, 'Legenda '+canal, p.legendas[canal])).join('')}
             ${renderCopyStage(p, idx, isTeam)}
           </div>
         </div>
@@ -769,6 +766,33 @@ function statusLabel(kind, val){
   return map[kind][val] || val;
 }
 
+function applyFieldValue(post, field, value){
+  const parts = field.split('::');
+  const fieldKey = parts[0], canal = parts[1];
+  if(fieldKey === 'copy') post.copy = value;
+  else if(fieldKey === 'legenda' && canal){ post.legendas = post.legendas || {}; post.legendas[canal] = value; }
+}
+
+function renderFieldCollapse(idx, isTeam, fieldKey, canal, label, value){
+  const editId = canal ? `${fieldKey}::${canal}` : fieldKey;
+  return `
+  <details class="field-collapse">
+    <summary class="pd-label" style="cursor:pointer;">${escapeHtml(label)}</summary>
+    <div class="pd-value">${escapeHtml(value)}</div>
+    ${isTeam ? `
+      <div style="padding:10px 0 4px;">
+        <div class="field-block"><div class="label">Editar manualmente</div><textarea class="manual-field-edit" data-idx="${idx}" data-field="${escapeAttr(editId)}">${escapeHtml(value)}</textarea></div>
+        <div class="field-block"><div class="label">Sugerir nova versão com IA (descreva o ajuste)</div>
+          <input type="text" class="ai-field-comment" data-idx="${idx}" data-field="${escapeAttr(editId)}" placeholder="Ex: não mencionar 'segunda maior fabricante' aqui..." style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:13px;" />
+        </div>
+        <div class="edit-actions">
+          <button class="btn-small btn-ghost save-field-edit" data-idx="${idx}" data-field="${escapeAttr(editId)}">Salvar edição</button>
+          <button class="btn-small btn-ghost regen-field" data-idx="${idx}" data-field="${escapeAttr(editId)}">Gerar nova versão com IA</button>
+        </div>
+      </div>` : ''}
+  </details>`;
+}
+
 function renderCopyStage(p, idx, isTeam){
   const comments = (p.copyComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
   const suggestion = (isTeam && p.aiSuggestion) ? `
@@ -784,20 +808,23 @@ function renderCopyStage(p, idx, isTeam){
       </div>
     </div>` : '';
 
+  const horarioOpcoes = ['A definir','08h','09h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'];
+  const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(p.data) ? p.data : '';
+
   const adminEdit = isTeam ? `
     <div class="admin-post-edit">
       <div class="field-block"><div class="label">Editar tema</div><input type="text" class="edit-tema" data-idx="${idx}" value="${escapeAttr(p.tema)}" /></div>
       <div class="grid-2">
-        <div class="field-block"><div class="label">Data da postagem</div><input type="text" class="edit-data" data-idx="${idx}" value="${escapeAttr(p.data||'A definir')}" /></div>
-        <div class="field-block"><div class="label">Horário</div><input type="text" class="edit-horario" data-idx="${idx}" value="${escapeAttr(p.horario||'A definir')}" /></div>
+        <div class="field-block"><div class="label">Data da postagem</div><input type="date" class="edit-data" data-idx="${idx}" value="${dataValida}" /></div>
+        <div class="field-block"><div class="label">Horário</div>
+          <select class="edit-horario" data-idx="${idx}">
+            ${horarioOpcoes.map(h=>`<option value="${h}" ${p.horario===h?'selected':''}>${h}</option>`).join('')}
+          </select>
+        </div>
       </div>
-      <div class="field-block"><div class="label">Editar copy</div><textarea class="edit-copy" data-idx="${idx}">${escapeHtml(p.copy)}</textarea></div>
-      ${Object.keys(p.legendas||{}).map(canal=>`
-        <div class="field-block"><div class="label">Editar legenda ${escapeHtml(canal)}</div><textarea class="edit-legenda" data-idx="${idx}" data-canal="${escapeAttr(canal)}">${escapeHtml(p.legendas[canal])}</textarea></div>
-      `).join('')}
       <div class="edit-actions">
         <button class="btn-small btn-ghost save-edit" data-idx="${idx}">Salvar edição</button>
-        <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar com IA</button>
+        <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar post inteiro com IA</button>
       </div>
     </div>` : '';
 
@@ -1141,22 +1168,57 @@ function attachHandlers(){
       const tema = document.querySelector(`.edit-tema[data-idx="${idx}"]`);
       const data = document.querySelector(`.edit-data[data-idx="${idx}"]`);
       const horario = document.querySelector(`.edit-horario[data-idx="${idx}"]`);
-      const copy = document.querySelector(`.edit-copy[data-idx="${idx}"]`);
-      const legendaInputs = document.querySelectorAll(`.edit-legenda[data-idx="${idx}"]`);
       const post = state.currentClient.posts[idx];
       if(tema) post.tema = tema.value;
-      if(data) post.data = data.value;
+      if(data && data.value) post.data = data.value;
       if(horario) post.horario = horario.value;
-      if(copy) post.copy = copy.value;
-      if(legendaInputs.length){
-        const novasLegendas = {};
-        legendaInputs.forEach(el=>{ novasLegendas[el.getAttribute('data-canal')] = el.value; });
-        post.legendas = novasLegendas;
-      }
-      post.copyStatus = 'pendente';
       await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Post atualizado.');
     };
   });
+
+  $$('.save-field-edit').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const field = btn.getAttribute('data-field');
+      const textarea = document.querySelector(`.manual-field-edit[data-idx="${idx}"][data-field="${CSS.escape(field)}"]`);
+      if(!textarea) return;
+      applyFieldValue(state.currentClient.posts[idx], field, textarea.value);
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast('Campo atualizado.');
+    };
+  });
+
+  $$('.regen-field').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const field = btn.getAttribute('data-field');
+      const commentInput = document.querySelector(`.ai-field-comment[data-idx="${idx}"][data-field="${CSS.escape(field)}"]`);
+      const comentario = commentInput ? commentInput.value.trim() : '';
+      if(!comentario){ showToast('Escreva o que deve mudar antes de gerar.'); return; }
+      const post = state.currentClient.posts[idx];
+      const fieldKey = field.split('::')[0];
+      const canal = field.split('::')[1];
+      const originalText = btn.textContent;
+      btn.textContent = 'Gerando...'; btn.disabled = true;
+      try{
+        const result = await apiPost('regenerateField', {brief: state.currentClient.brief, post, field: fieldKey, canal, comentario});
+        if(result && result.texto){
+          applyFieldValue(post, field, result.texto);
+          await apiPost('saveClient', {client: state.currentClient});
+          render();
+          showToast('Novo texto gerado.');
+        } else {
+          showToast('Não consegui gerar. Tenta de novo.');
+          btn.textContent = originalText; btn.disabled = false;
+        }
+      }catch(e){
+        showToast('Erro: ' + e.message);
+        btn.textContent = originalText; btn.disabled = false;
+      }
+    };
+  });
+
   $$('.regen-post').forEach(btn=>{
     btn.onclick = async ()=>{
       const idx = parseInt(btn.getAttribute('data-idx'),10);
