@@ -169,8 +169,17 @@
   /* ---- Calendário (lista) ---- */
   .calendar-list{max-width:820px;margin:0 auto;padding:0 32px 60px;display:flex;flex-direction:column;gap:10px;}
   .calendar-row{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .15s, transform .15s;}
-  .calendar-row-geral{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .15s, transform .15s;}
-  .calendar-row-geral:hover{border-color:var(--teal);transform:translateX(2px);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);}
+  .cal-grid-header{background:var(--paper-dim);padding:10px 6px;text-align:center;font-weight:700;font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;}
+  .cal-day{min-height:112px;border-top:1px solid var(--line);border-right:1px solid var(--line);padding:8px;}
+  .cal-day.other-month{background:#FAFAFB;}
+  .cal-day-num{font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .cal-item{font-size:10.5px;padding:3px 6px;border-radius:6px;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;}
+  .cal-item.post{background:#E9F0FF;color:var(--blue);}
+  .cal-item.evento{background:#FFF3D6;color:#8A6100;}
+  .cal-nav-btn{background:var(--paper);border:1.5px solid var(--line)!important;color:var(--ink);width:34px;height:34px;border-radius:9px;font-size:16px;}
+  .cal-nav-btn:hover{border-color:var(--teal)!important;color:var(--teal);}
+  .cal-item:hover{filter:brightness(0.95);}
   .calendar-row:hover{border-color:var(--teal);transform:translateX(2px);}
   .calendar-row .num{font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--ink-soft);min-width:56px;}
   .calendar-row .info{flex:1;min-width:0;}
@@ -542,31 +551,114 @@ function renderTeamDashboard(){
 }
 
 function renderCalendarioGeral(){
-  const itens = (state.calendarioGeral || []).slice().sort((a,b)=>{
-    const da = /^\d{4}-\d{2}-\d{2}$/.test(a.data) ? a.data : '9999-99-99';
-    const db = /^\d{4}-\d{2}-\d{2}$/.test(b.data) ? b.data : '9999-99-99';
-    return da.localeCompare(db);
+  const now = new Date();
+  if(!state.calMonth) state.calMonth = { year: now.getFullYear(), month: now.getMonth() };
+  if(state.calFiltroTag === undefined) state.calFiltroTag = '';
+  const { year, month } = state.calMonth;
+  const todosItens = state.calendarioGeral || [];
+  const itens = state.calFiltroTag ? todosItens.filter(it=>it.tagInterna === state.calFiltroTag) : todosItens;
+
+  const tagsUnicas = [...new Set(todosItens.map(it=>it.tagInterna).filter(Boolean))].sort();
+
+  const porData = {};
+  itens.forEach(it=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(it.data)) return;
+    porData[it.data] = porData[it.data] || [];
+    porData[it.data].push(it);
   });
-  const rows = itens.map(it=>`
-    <div class="calendar-row-geral" data-slug="${escapeAttr(it.clientSlug)}" data-postidx="${it.postIndex}">
-      <span class="num" style="min-width:120px;">${formatarData(it.data)}${it.horario && it.horario!=='A definir' ? ' · '+escapeHtml(it.horario) : ''}</span>
-      <div class="info">
-        <div class="tema">${escapeHtml(it.clientName)} — ${escapeHtml(it.tema)}</div>
-        <div class="meta">${escapeHtml(it.formato||'—')}</div>
-      </div>
-      <span class="status-pill ${it.copyStatus}">${statusLabel('copy',it.copyStatus)}</span>
-      <span class="arrow">&rarr;</span>
-    </div>`).join('');
+
+  const primeiroDia = new Date(year, month, 1);
+  const diasNoMes = new Date(year, month+1, 0).getDate();
+  const offsetInicio = primeiroDia.getDay();
+  const totalCelulas = Math.ceil((offsetInicio + diasNoMes) / 7) * 7;
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  let celulas = '';
+  for(let i=0;i<totalCelulas;i++){
+    const diaNum = i - offsetInicio + 1;
+    const dentroDoMes = diaNum >= 1 && diaNum <= diasNoMes;
+    let itemsHtml = '';
+    let temConflito = false;
+    if(dentroDoMes){
+      const dataStr = `${year}-${String(month+1).padStart(2,'0')}-${String(diaNum).padStart(2,'0')}`;
+      const todosDoDia = porData[dataStr] || [];
+
+      // Detecta conflito: 2+ itens no mesmo dia com o MESMO horário definido
+      const contagemHorario = {};
+      todosDoDia.forEach(it=>{
+        if(it.horario && it.horario !== 'A definir'){
+          contagemHorario[it.horario] = (contagemHorario[it.horario]||0) + 1;
+        }
+      });
+      temConflito = Object.values(contagemHorario).some(n=>n>1);
+
+      const visiveis = todosDoDia.slice(0,4);
+      itemsHtml = visiveis.map(it=>{
+        const horarioTxt = (it.horario && it.horario!=='A definir') ? escapeHtml(it.horario)+' · ' : '';
+        const conflitante = it.horario && it.horario!=='A definir' && contagemHorario[it.horario] > 1;
+        const conflitoStyle = conflitante ? 'border:1.5px solid var(--danger);' : '';
+        const conflitoIcone = conflitante ? '⚠️ ' : '';
+        if(it.tipo === 'evento'){
+          return `<div class="cal-item evento" style="${conflitoStyle}" title="${escapeAttr((conflitante?'CONFLITO DE HORÁRIO — ':'')+(it.categoria?it.categoria+': ':'')+it.titulo)}">${conflitoIcone}${horarioTxt}${escapeHtml(it.titulo)}</div>`;
+        }
+        return `<div class="cal-item post" style="${conflitoStyle}" data-slug="${escapeAttr(it.clientSlug)}" data-postidx="${it.postIndex}" title="${escapeAttr((conflitante?'CONFLITO DE HORÁRIO — ':'')+it.clientName+' — '+it.tema)}">${conflitoIcone}${horarioTxt}${escapeHtml(it.clientName)}</div>`;
+      }).join('');
+      if(todosDoDia.length > 4) itemsHtml += `<div style="font-size:10px;color:var(--grey);">+${todosDoDia.length-4} mais</div>`;
+    }
+    celulas += `<div class="cal-day ${dentroDoMes?'':'other-month'}">${dentroDoMes ? `<div class="cal-day-num">${diaNum}${temConflito ? ' <span title="Conflito de horário neste dia" style="color:var(--danger);">⚠️</span>' : ''}</div>${itemsHtml}` : ''}</div>`;
+  }
 
   return `
   <div class="screen">
     <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
       <div class="topbar-actions"><button class="pill-btn" id="back-dashboard">Voltar</button></div>
     </div>
-    <div class="main" style="padding-bottom:0;">
-      <div class="main-header"><div><h1>Calendário geral</h1><p>Todos os posts de todos os clientes, por data.</p></div></div>
+    <div class="main">
+      <div class="main-header">
+        <div><h1>Calendário geral</h1><p>Posts e eventos de todos os clientes. ⚠️ indica conflito de horário no dia.</p></div>
+        <button class="btn-small btn-mint" id="toggle-evento-form">+ Adicionar evento</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-soft);">Filtrar por tag:</label>
+        <select id="cal-filtro-tag" style="width:auto;">
+          <option value="">Todas as tags</option>
+          ${tagsUnicas.map(t=>`<option value="${escapeAttr(t)}" ${state.calFiltroTag===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="evento-form-panel" style="display:none;background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px;">
+        <h3 style="margin:0 0 12px;font-size:15px;">Novo evento</h3>
+        <div class="grid-2">
+          <div class="field"><label>Cliente</label><select id="evento-cliente">${state.clientsIndex.map(c=>`<option value="${escapeAttr(c.slug)}">${escapeHtml(c.name)}</option>`).join('')}</select></div>
+          <div class="field"><label>Tipo</label>
+            <select id="evento-tipo">
+              <option>Live/Videocast</option>
+              <option>Data de lançamento</option>
+              <option>Disparo de WhatsApp</option>
+              <option>Outro</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Título/descrição</label><input type="text" id="evento-titulo" placeholder="Ex: Live com o cliente sobre o programa" /></div>
+        <div class="grid-2">
+          <div class="field"><label>Data</label><input type="date" id="evento-data" /></div>
+          <div class="field"><label>Horário</label><input type="text" id="evento-horario" placeholder="Ex: 14h" /></div>
+        </div>
+        <button class="btn-small btn-mint" id="save-evento">Salvar evento</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+        <button class="cal-nav-btn" id="cal-prev">&larr;</button>
+        <h2 style="margin:0;font-size:20px;">${nomesMes[month]} ${year}</h2>
+        <button class="cal-nav-btn" id="cal-next">&rarr;</button>
+      </div>
+
+      <div class="cal-grid">
+        ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-grid-header">${d}</div>`).join('')}
+        ${celulas}
+      </div>
     </div>
-    <div class="calendar-list">${itens.length ? rows : '<div class="empty-state">Nenhum post encontrado ainda.</div>'}</div>
   </div>`;
 }
 
@@ -1105,10 +1197,58 @@ function attachHandlers(){
       render();
     };
   }
-  $$('.calendar-row-geral').forEach(row=>{
-    row.onclick = async ()=>{
-      const slug = row.getAttribute('data-slug');
-      const postIdx = parseInt(row.getAttribute('data-postidx'),10);
+  if($('#cal-prev')){
+    $('#cal-prev').onclick = ()=>{
+      let { year, month } = state.calMonth;
+      month--; if(month < 0){ month = 11; year--; }
+      state.calMonth = { year, month };
+      render();
+    };
+  }
+  if($('#cal-next')){
+    $('#cal-next').onclick = ()=>{
+      let { year, month } = state.calMonth;
+      month++; if(month > 11){ month = 0; year++; }
+      state.calMonth = { year, month };
+      render();
+    };
+  }
+  if($('#cal-filtro-tag')){
+    $('#cal-filtro-tag').onchange = (e)=>{
+      state.calFiltroTag = e.target.value;
+      render();
+    };
+  }
+  if($('#toggle-evento-form')){
+    $('#toggle-evento-form').onclick = ()=>{
+      const panel = $('#evento-form-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    };
+  }
+  if($('#save-evento')){
+    $('#save-evento').onclick = async ()=>{
+      const slug = $('#evento-cliente').value;
+      const titulo = $('#evento-titulo').value.trim();
+      const data = $('#evento-data').value;
+      const horario = $('#evento-horario').value.trim() || 'A definir';
+      const tipo = $('#evento-tipo').value;
+      if(!titulo || !data){ showToast('Preencha ao menos o título e a data.'); return; }
+      const btn = $('#save-evento'); btn.disabled = true; btn.textContent = 'Salvando...';
+      try{
+        const client = await apiGet('getClient', {slug});
+        client.eventos = client.eventos || [];
+        client.eventos.push({ id: 'evento-'+Date.now(), titulo, tipo, data, horario });
+        await apiPost('saveClient', {client});
+        state.calendarioGeral = await apiGet('getAllPostsForCalendar');
+        render();
+        showToast('Evento adicionado!');
+      }catch(e){ showToast('Erro ao salvar evento: ' + e.message); btn.disabled = false; btn.textContent = 'Salvar evento'; }
+    };
+  }
+  $$('.cal-item.post').forEach(item=>{
+    item.onclick = async ()=>{
+      const slug = item.getAttribute('data-slug');
+      const postIdx = parseInt(item.getAttribute('data-postidx'),10);
       state.currentSlug = slug;
       state.currentClient = await apiGet('getClient', {slug});
       state.currentPostIdx = postIdx;
