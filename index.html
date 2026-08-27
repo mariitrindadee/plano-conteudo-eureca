@@ -392,7 +392,7 @@ async function exportarPlanoPPTX(slug, nome){
     slide.addText(`PLANO DE CONTEÚDOS — ${nome}`, { x:0.5, y:0.3, fontSize:9, color:GREY, bold:true, fontFace:'Arial' });
     slide.addText(`Post ${idx+1}`, { x:0.5, y:0.6, fontSize:28, color:TEAL, bold:true, fontFace:'Arial' });
     slide.addText(`${p.tema||''}${p.formato ? ' / '+p.formato : ''}`, { x:0.5, y:1.25, fontSize:13, color:INK, bold:true, fontFace:'Arial', w:12 });
-    slide.addText(`DATA DA POSTAGEM: ${p.data||'A definir'}    HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:1.65, fontSize:10, color:INK, bold:true, fontFace:'Arial' });
+    slide.addText(`DATA DA POSTAGEM: ${formatarData(p.data)}    HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:1.65, fontSize:10, color:INK, bold:true, fontFace:'Arial' });
 
     slide.addText('COPY', { x:0.5, y:2.15, fontSize:9, color:TEAL, bold:true, fontFace:'Arial' });
     slide.addText(p.copy||'', { x:0.5, y:2.4, fontSize:10, color:INK, fontFace:'Arial', w:6.2, h:3.5, valign:'top' });
@@ -510,6 +510,7 @@ function renderTeamDashboard(){
     <div class="client-card" data-slug="${c.slug}" style="position:relative;">
       <button class="delete-client-btn" data-slug="${c.slug}" data-name="${escapeAttr(c.name)}" title="Excluir plano" style="position:absolute;top:14px;right:14px;background:none;color:var(--grey);font-size:16px;line-height:1;padding:4px;">✕</button>
       <h3 style="padding-right:20px;">${escapeHtml(c.name)}</h3>
+      ${c.tagInterna ? `<span class="chip pending" style="margin-top:4px;display:inline-block;">${escapeHtml(c.tagInterna)}</span>` : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
         <div style="font-size:12px;color:var(--grey)">Gerado em ${dataGerado} · ${total} posts</div>
         <button class="download-plan-btn" data-slug="${c.slug}" data-name="${escapeAttr(c.name)}" title="Baixar plano em PPTX" style="background:var(--paper-dim);border-radius:8px;padding:6px;line-height:0;">
@@ -560,6 +561,7 @@ function renderBriefForm(editMode){
         <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
         <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
         <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: Agosto a Setembro/2026" value="${v(b.periodoAtracao)}" /></div>
+        <div class="field"><label>Tag interna do programa (organização interna Eureca, não aparece pro cliente)</label><input type="text" id="f-tagInterna" placeholder="Ex: BV-EST-2026" value="${v(b.tagInterna)}" /></div>
 
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
         <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
@@ -662,7 +664,7 @@ function renderClientCalendar(isTeam){
       <span class="num">Post ${idx+1}</span>
       <div class="info">
         <div class="tema">${escapeHtml(p.tema)}</div>
-        <div class="meta">${escapeHtml(p.formato||'—')} · ${escapeHtml(p.data||'A definir')}</div>
+        <div class="meta">${escapeHtml(p.formato||'—')} · ${formatarData(p.data)}</div>
       </div>
       <span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span>
       <span class="arrow">&rarr;</span>
@@ -677,6 +679,7 @@ function renderClientCalendar(isTeam){
     <div class="main" style="padding-bottom:0;">
       <button class="back-link" id="back-intro">&larr; Voltar</button>
       <div class="main-header"><div><h1>Calendário de conteúdos</h1><p>Clique em um post para ver os detalhes${isTeam ? ', editar e revisar' : ' e comentar'}.</p></div></div>
+      ${isTeam ? `<button class="btn-small btn-mint" id="add-manual-post" style="margin-bottom:16px;">+ Adicionar post manualmente</button>` : ''}
     </div>
     <div class="calendar-list">${rows}</div>
   </div>`;
@@ -733,7 +736,7 @@ function renderClientPostDetail(isTeam){
           </div>
         </div>` : `
         <div class="post-detail-meta">
-          DATA DA POSTAGEM: ${escapeHtml(p.data||'A definir')}<br>
+          DATA DA POSTAGEM: ${formatarData(p.data)}<br>
           HORÁRIO: ${escapeHtml(p.horario||'A definir')}
         </div>`}
 
@@ -767,6 +770,13 @@ function renderLegendasBlocks(legendas){
       <div class="label">Legenda ${escapeHtml(canal)}</div>
       <div class="value">${escapeHtml(legendas[canal])}</div>
     </div>`).join('');
+}
+
+function formatarData(data){
+  if(!data) return 'A definir';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+  if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return data; // já é texto tipo "A definir" ou outro formato
 }
 
 function statusLabel(kind, val){
@@ -845,6 +855,11 @@ function renderCopyStage(p, idx, isTeam){
   </div>`;
 }
 
+function ehFormatoVideo(formato){
+  const f = (formato||'').toLowerCase();
+  return f.includes('reel') || f.includes('vídeo') || f.includes('video');
+}
+
 function renderArtStage(p, idx, isTeam){
   const unlocked = isTeam || p.copyStatus === 'aprovado';
   if(!unlocked){
@@ -853,8 +868,19 @@ function renderArtStage(p, idx, isTeam){
   const comments = (p.artComments||[]).map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
   const imgTag = p.artImageUrl ? `<img class="art-preview" src="${escapeAttr(p.artImageUrl)}" alt="Arte do post" />` : '';
 
+  const videoBlock = ehFormatoVideo(p.formato) ? `
+    <div style="margin:10px 0;">
+      <div class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--grey);margin-bottom:6px;">Link do vídeo (Drive, YouTube, etc.)</div>
+      ${isTeam ? `
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="edit-video-url" data-idx="${idx}" value="${escapeAttr(p.videoUrl||'')}" placeholder="https://..." style="flex:1;" />
+          <button class="btn-small btn-ghost save-video-url" data-idx="${idx}">Salvar</button>
+        </div>` : ''}
+      ${p.videoUrl ? `<a href="${escapeAttr(p.videoUrl)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:12.5px;color:var(--teal);font-weight:700;">▶ Ver vídeo ↗</a>` : (!isTeam ? '<p style="font-size:12px;color:var(--grey);">Vídeo ainda não enviado.</p>' : '')}
+    </div>` : '';
+
   const teamControls = isTeam ? `
-    <label class="art-upload-label">${p.artImageUrl ? 'Trocar arte' : 'Subir arte'}<input type="file" accept="image/*" class="art-upload-input upload-art" data-idx="${idx}" /></label>
+    <label class="art-upload-label">${p.artImageUrl ? 'Trocar capa/arte' : 'Subir capa/arte'}<input type="file" accept="image/*" class="art-upload-input upload-art" data-idx="${idx}" /></label>
     ${p.artImageUrl ? `<button class="btn-small btn-ghost delete-art" data-idx="${idx}" style="margin-left:8px;">Excluir arte</button>` : ''}
   ` : '';
 
@@ -868,6 +894,7 @@ function renderArtStage(p, idx, isTeam){
   return `
   <div class="stage">
     <div class="stage-head"><span class="stage-title">Etapa 2 · Arte</span><span class="status-pill ${p.artStatus}">${statusLabel('art',p.artStatus)}</span></div>
+    ${videoBlock}
     ${imgTag}
     ${teamControls}
     ${comments ? `<div class="comment-list" style="margin-top:8px;">${comments}</div>` : ''}
@@ -982,7 +1009,7 @@ function attachHandlers(){
     });
   }
   function readBriefFromForm(){
-    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
     const b = {};
     fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
     return b;
@@ -1062,6 +1089,23 @@ function attachHandlers(){
       await apiPost('saveClient', {client: state.currentClient});
       render();
       showToast('Status atualizado.');
+    };
+  }
+
+  if($('#add-manual-post')){
+    $('#add-manual-post').onclick = async ()=>{
+      const novoPost = {
+        id: 'post-manual-' + Date.now(), tema: 'Novo post (editar tema)', formato: 'Estático', canais: '',
+        copy: '', legendas: {}, roteiro: '', trend_insight: '', data: 'A definir', horario: 'A definir', videoUrl: '',
+        copyStatus: 'pendente', copyComments: [], aiSuggestion: null,
+        artStatus: 'aguardando', artComments: [], artImageUrl: '', pubStatus: 'nao_agendado'
+      };
+      state.currentClient.posts.push(novoPost);
+      state.currentPostIdx = state.currentClient.posts.length - 1;
+      await apiPost('saveClient', {client: state.currentClient});
+      state.view = 'team-post';
+      render();
+      showToast('Post adicionado — edite os campos abaixo.');
     };
   }
 
@@ -1230,6 +1274,18 @@ function attachHandlers(){
       newPost.copyStatus = 'pendente';
       state.currentClient.posts[idx] = newPost;
       await apiPost('saveClient', {client: state.currentClient}); render(); showToast('Post regenerado.');
+    };
+  });
+
+  $$('.save-video-url').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const input = document.querySelector(`.edit-video-url[data-idx="${idx}"]`);
+      if(!input) return;
+      state.currentClient.posts[idx].videoUrl = input.value.trim();
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast('Link do vídeo salvo.');
     };
   });
 
