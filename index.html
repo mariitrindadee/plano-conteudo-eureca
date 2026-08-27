@@ -194,7 +194,7 @@
     background:radial-gradient(circle at 35% 30%, #C9A6F5 0%, #8FB6F0 45%, transparent 70%);filter:blur(70px);opacity:0.45;z-index:0;pointer-events:none;}
   .post-detail-inner{position:relative;z-index:1;}
   .post-detail-eyebrow{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;}
-  .post-detail-title{font-size:40px;color:var(--teal);margin:0 0 10px;}
+  .post-detail-title{font-size:26px;color:var(--teal);margin:0 0 10px;}
   .post-detail-subtitle{font-size:15px;font-weight:600;color:var(--ink-soft);margin-bottom:10px;}
   .post-detail-meta{font-size:13px;font-weight:700;color:var(--ink-soft);line-height:1.8;margin-bottom:28px;}
   .post-detail-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:36px;}
@@ -311,15 +311,19 @@ function sleep_(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
 // intervalo mantém uma margem segura sem exagerar na espera.
 const GEMINI_FREE_TIER_PACING_MS = 7000;
 
-// Quando o cliente precisa de conteúdo diferente por rede, transforma cada
-// post (que já tem uma legenda por canal) em VÁRIOS posts independentes,
-// um por canal, cada um com sua própria arte/status.
-function expandirPostsPorRede(posts){
+// Só os canais escolhidos (canaisSeparados) viram cards próprios. Os demais
+// canais do post (se houver) continuam juntos num card "restante".
+function expandirPostsPorRede(posts, canaisSeparados){
+  const setSep = new Set(canaisSeparados||[]);
   const expandido = [];
   posts.forEach(post=>{
-    const canais = Object.keys(post.legendas||{}).filter(c=>post.legendas[c]);
-    if(canais.length <= 1){ expandido.push(post); return; }
-    canais.forEach((canal, i)=>{
+    const canaisDoPost = Object.keys(post.legendas||{}).filter(c=>post.legendas[c]);
+    const paraSeparar = canaisDoPost.filter(c=>setSep.has(c));
+    const paraManter = canaisDoPost.filter(c=>!setSep.has(c));
+
+    if(paraSeparar.length === 0){ expandido.push(post); return; }
+
+    paraSeparar.forEach((canal, i)=>{
       const clone = JSON.parse(JSON.stringify(post));
       clone.id = post.id + '-' + canal.toLowerCase().replace(/\s+/g,'-') + '-' + i;
       clone.tema = post.tema + ' · ' + canal;
@@ -329,6 +333,17 @@ function expandirPostsPorRede(posts){
       clone.fieldStatus = {}; clone.fieldComments = {};
       expandido.push(clone);
     });
+
+    if(paraManter.length > 0){
+      const restante = JSON.parse(JSON.stringify(post));
+      restante.id = post.id + '-restante';
+      restante.canais = paraManter.join(', ');
+      restante.legendas = {};
+      paraManter.forEach(c=>{ restante.legendas[c] = post.legendas[c]; });
+      restante.artImageUrl = ''; restante.artStatus = 'aguardando'; restante.artComments = [];
+      restante.fieldStatus = {}; restante.fieldComments = {};
+      expandido.push(restante);
+    }
   });
   return expandido;
 }
@@ -413,38 +428,98 @@ async function exportarPlanoPPTX(slug, nome){
 
   const pres = new PptxGenJS();
   pres.layout = 'LAYOUT_WIDE';
-  const INK = '211F2E', MINT = '71FFB4', TEAL = '1D8674', GREY = '888888';
+  const INK = '211F2E', MINT = '71FFB4', TEAL = '1D8674', GREY = '888888', LINE = 'E7E5EE', PAPER_DIM = 'F6F5F8', BLUE='3355A8', BLUE_BG='E9F0FF', WARN_BG='FDF1DC', WARN='B4791F';
 
+  function addBlob(slide, x, y, size, color, transparency){
+    slide.addShape(pres.ShapeType.ellipse, { x, y, w:size, h:size, fill:{ color, transparency }, line:{ type:'none' } });
+  }
+  function statusCores(status){
+    if(status==='aprovado' || status==='aprovada' || status==='publicado') return { bg:'DFF9EB', fg:TEAL };
+    if(status==='alteracao') return { bg:WARN_BG, fg:WARN };
+    if(status==='descartado') return { bg:PAPER_DIM, fg:GREY };
+    return { bg:PAPER_DIM, fg:INK };
+  }
+
+  // ---------- CAPA ----------
   const capa = pres.addSlide();
   capa.background = { color: INK };
-  capa.addText('eureca', { x:0.5, y:0.4, fontSize:20, bold:true, color:MINT, fontFace:'Arial' });
-  capa.addText('PLANO DE CONTEÚDOS', { x:0.5, y:2.6, fontSize:14, color:MINT, bold:true, fontFace:'Arial' });
-  capa.addText(nome, { x:0.5, y:3.0, fontSize:36, color:'FFFFFF', bold:true, fontFace:'Arial', w:12 });
+  addBlob(capa, 8.5, -1.5, 6, 'C9A6F5', 55);
+  addBlob(capa, 10.5, 2, 5, '8FB6F0', 60);
+  capa.addText('eureca', { x:0.6, y:0.4, fontSize:22, bold:true, color:MINT, fontFace:'Arial' });
+  capa.addText('PLANO DE CONTEÚDOS', { x:0.6, y:2.5, fontSize:13, color:MINT, bold:true, fontFace:'Arial', charSpacing:2 });
+  capa.addText(nome, { x:0.6, y:2.9, fontSize:38, color:'FFFFFF', bold:true, fontFace:'Arial', w:12 });
+  const totalPosts = client.posts.length;
+  const aprovados = client.posts.filter(p=>p.copyStatus==='aprovado').length;
+  capa.addText(`${totalPosts} posts  ·  ${aprovados} com copy aprovada`, { x:0.6, y:3.9, fontSize:13, color:'C9C6D6', fontFace:'Arial' });
 
+  // ---------- UM SLIDE POR POST ----------
   client.posts.forEach((p, idx)=>{
     const slide = pres.addSlide();
     slide.background = { color:'FFFFFF' };
-    slide.addText(`PLANO DE CONTEÚDOS — ${nome}`, { x:0.5, y:0.3, fontSize:9, color:GREY, bold:true, fontFace:'Arial' });
-    slide.addText(`Post ${idx+1}`, { x:0.5, y:0.6, fontSize:28, color:TEAL, bold:true, fontFace:'Arial' });
-    slide.addText(`${p.tema||''}${p.formato ? ' / '+p.formato : ''}`, { x:0.5, y:1.25, fontSize:13, color:INK, bold:true, fontFace:'Arial', w:12 });
-    slide.addText(`DATA DA POSTAGEM: ${formatarData(p.data)}    HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:1.65, fontSize:10, color:INK, bold:true, fontFace:'Arial' });
+    addBlob(slide, -1.5, 4.2, 5, 'C9A6F5', 80);
+    addBlob(slide, -0.5, 5.2, 4, '8FB6F0', 85);
 
-    slide.addText('COPY', { x:0.5, y:2.15, fontSize:9, color:TEAL, bold:true, fontFace:'Arial' });
-    slide.addText(p.copy||'', { x:0.5, y:2.4, fontSize:10, color:INK, fontFace:'Arial', w:6.2, h:3.5, valign:'top' });
+    slide.addText(`PLANO DE CONTEÚDOS — ${nome.toUpperCase()}`, { x:0.5, y:0.28, fontSize:8.5, color:GREY, bold:true, fontFace:'Arial', charSpacing:1 });
+    slide.addText(`Post ${idx+1}`, { x:0.5, y:0.55, fontSize:26, color:TEAL, bold:true, fontFace:'Arial' });
+    slide.addText(`${p.tema||''}`, { x:0.5, y:1.15, fontSize:12.5, color:INK, bold:true, fontFace:'Arial', w:12.2 });
 
-    let yLeg = 2.15;
+    // Tags de formato/canais
+    const tagFormato = p.formato || '—';
+    const tagCanais = p.canais || '—';
+    slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:1.55, w:1.6, h:0.28, rectRadius:0.06, fill:{color:BLUE_BG}, line:{type:'none'} });
+    slide.addText(tagFormato, { x:0.5, y:1.55, w:1.6, h:0.28, fontSize:8.5, color:BLUE, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
+    slide.addShape(pres.ShapeType.roundRect, { x:2.2, y:1.55, w:1.8, h:0.28, rectRadius:0.06, fill:{color:PAPER_DIM}, line:{type:'none'} });
+    slide.addText(tagCanais, { x:2.2, y:1.55, w:1.8, h:0.28, fontSize:8.5, color:INK, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
+
+    // Status
+    const cs = statusCores(p.copyStatus);
+    slide.addShape(pres.ShapeType.roundRect, { x:10.5, y:1.55, w:2.3, h:0.28, rectRadius:0.06, fill:{color:cs.bg}, line:{type:'none'} });
+    slide.addText(statusLabel('copy', p.copyStatus), { x:10.5, y:1.55, w:2.3, h:0.28, fontSize:8.5, color:cs.fg, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
+
+    slide.addText(`DATA DA POSTAGEM: ${formatarData(p.data)}      HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:2.0, fontSize:9.5, color:INK, bold:true, fontFace:'Arial' });
+
+    // Coluna esquerda: Copy + Roteiro + Arte
+    slide.addShape(pres.ShapeType.rect, { x:0.5, y:2.5, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+    slide.addText('COPY', { x:0.5, y:2.58, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+    slide.addText(p.copy||'', { x:0.5, y:2.85, fontSize:10, color:INK, fontFace:'Arial', w:6.2, h:1.7, valign:'top' });
+
+    let yEsq = 4.7;
+    if(p.roteiro){
+      slide.addShape(pres.ShapeType.rect, { x:0.5, y:yEsq, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+      slide.addText('ROTEIRO', { x:0.5, y:yEsq+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+      slide.addText(p.roteiro, { x:0.5, y:yEsq+0.35, fontSize:9, color:INK, fontFace:'Arial', w:6.2, h:1.2, valign:'top' });
+      yEsq += 1.7;
+    }
+
+    slide.addShape(pres.ShapeType.rect, { x:0.5, y:yEsq, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+    slide.addText('ARTE', { x:0.5, y:yEsq+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+    if(p.artImageUrl){
+      try{ slide.addImage({ data: p.artImageUrl, x:0.5, y:yEsq+0.35, w:2.4, h:2.4, sizing:{type:'contain', w:2.4, h:2.4} }); }catch(e){}
+    } else {
+      slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:yEsq+0.35, w:2.4, h:1.0, rectRadius:0.08, fill:{color:PAPER_DIM}, line:{color:LINE, width:1, dashType:'dash'} });
+      slide.addText('Arte ainda não enviada', { x:0.5, y:yEsq+0.35, w:2.4, h:1.0, fontSize:8.5, color:GREY, align:'center', valign:'middle', fontFace:'Arial' });
+    }
+    if(p.videoUrl){
+      slide.addText('▶ Ver vídeo', { x:0.5, y:yEsq+1.5, fontSize:9, color:TEAL, bold:true, fontFace:'Arial', hyperlink:{url:p.videoUrl} });
+    }
+
+    // Coluna direita: uma legenda por canal
+    let yDir = 2.5;
     Object.keys(p.legendas||{}).forEach(canal=>{
       if(!p.legendas[canal]) return;
-      slide.addText('LEGENDA ' + canal.toUpperCase(), { x:7, y:yLeg, fontSize:9, color:TEAL, bold:true, fontFace:'Arial' });
-      slide.addText(p.legendas[canal], { x:7, y:yLeg+0.25, fontSize:9.5, color:INK, fontFace:'Arial', w:5.8, h:1.8, valign:'top' });
-      yLeg += 2.2;
+      slide.addShape(pres.ShapeType.rect, { x:7, y:yDir, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+      slide.addText('LEGENDA ' + canal.toUpperCase(), { x:7, y:yDir+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+      slide.addText(p.legendas[canal], { x:7, y:yDir+0.35, fontSize:9.5, color:INK, fontFace:'Arial', w:5.8, h:1.9, valign:'top' });
+      yDir += 2.25;
     });
   });
 
+  // ---------- ENCERRAMENTO ----------
   const fim = pres.addSlide();
   fim.background = { color: INK };
-  fim.addText('eureca', { x:0.5, y:3.4, fontSize:24, bold:true, color:MINT, fontFace:'Arial' });
-  fim.addText('Muito obrigado.', { x:0.5, y:4.0, fontSize:14, color:'FFFFFF', fontFace:'Arial' });
+  addBlob(fim, 8.5, 3, 6, 'C9A6F5', 55);
+  fim.addText('eureca', { x:0.6, y:3.3, fontSize:26, bold:true, color:MINT, fontFace:'Arial' });
+  fim.addText('Muito obrigado.', { x:0.6, y:3.95, fontSize:15, color:'FFFFFF', fontFace:'Arial' });
 
   await pres.writeFile({ fileName: `Plano de Conteúdos - ${nome}.pptx` });
   showToast('Download iniciado!');
@@ -715,7 +790,7 @@ function renderBriefForm(editMode){
         <div class="field"><label>E-mail da especialista responsável (recebe os avisos de feedback do cliente)</label><input type="email" id="f-emailEspecialista" placeholder="Ex: nome@eureca.me" value="${v(b.emailEspecialista)}" /></div>
         <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
         <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
-        <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: Agosto a Setembro/2026" value="${v(b.periodoAtracao)}" /></div>
+        <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: 01/03/2026 a 30/04/2026" value="${v(b.periodoAtracao)}" /></div>
 
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
         <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
@@ -728,10 +803,7 @@ function renderBriefForm(editMode){
         <div class="field"><label>Requisitos exigidos</label><textarea id="f-requisitos">${escapeHtml(b.requisitos)}</textarea></div>
 
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Processo seletivo</h3>
-        <div class="grid-2">
-          <div class="field"><label>Período de inscrições</label><input type="text" id="f-periodoInscricoes" value="${v(b.periodoInscricoes)}" /></div>
-          <div class="field"><label>Onde se inscrever</label><input type="text" id="f-ondeInscrever" value="${v(b.ondeInscrever)}" /></div>
-        </div>
+        <div class="field"><label>Onde se inscrever</label><input type="text" id="f-ondeInscrever" value="${v(b.ondeInscrever)}" /></div>
         <div class="field"><label>O que fazer para completar a fase de testes</label><textarea id="f-faseTestes">${escapeHtml(b.faseTestes)}</textarea></div>
         <div class="field"><label>Cronograma pós-inscrição</label><textarea id="f-cronograma">${escapeHtml(b.cronograma)}</textarea></div>
 
@@ -748,10 +820,20 @@ function renderBriefForm(editMode){
         <div class="field"><label>Algo que não foi perguntado</label><textarea id="f-algoMais">${escapeHtml(b.algoMais)}</textarea></div>
         ${!editMode ? `
         <div class="field" style="background:var(--paper-dim);border:1.5px solid var(--line);border-radius:12px;padding:14px;">
-          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
-            <input type="checkbox" id="f-legendaPorRede" style="width:auto;margin-top:2px;" />
-            <span>Este cliente precisa de <b>legenda e arte diferentes por rede social</b>? Se marcar, cada post vira um card separado por rede (ex: "Post 1 · Instagram", "Post 1 · LinkedIn"), cada um com sua própria arte.</span>
-          </label>
+          <label>Você precisa de legendas (e arte) separadas por canal?</label>
+          <select id="f-legendaPorRedeSim">
+            <option value="nao">Não — uma legenda por canal dentro do mesmo post está ok</option>
+            <option value="sim">Sim — quero post separado pra algum(ns) canal(is)</option>
+          </select>
+          <div id="canais-separados-wrap" style="display:none;margin-top:12px;">
+            <label style="margin-bottom:6px;">Quais canais precisam de post separado? (pode escolher mais de um)</label>
+            <div style="display:flex;gap:18px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;"><input type="checkbox" class="canal-separado-cb" value="Instagram" style="width:auto;" /> Instagram</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;"><input type="checkbox" class="canal-separado-cb" value="LinkedIn" style="width:auto;" /> LinkedIn</label>
+              <label style="display:flex;align-items:center;gap:6px;font-weight:500;"><input type="checkbox" class="canal-separado-cb" value="TikTok" style="width:auto;" /> TikTok</label>
+            </div>
+            <p style="font-size:11.5px;color:var(--grey);margin-top:8px;">Os canais marcados viram cards próprios (ex: "Post 1 · Instagram"). Os canais não marcados continuam juntos no mesmo card.</p>
+          </div>
         </div>` : ''}
 
         <div class="error-msg" id="brief-error" style="display:none;">Preencha ao menos o nome do programa e "Sobre a empresa".</div>
@@ -917,7 +999,14 @@ function renderClientPostDetail(isTeam){
         ${moveControls}
         ${isTeam ? `<button class="btn-small btn-ghost delete-post" data-idx="${idx}" style="margin-bottom:18px;color:var(--danger);">Excluir este post</button>` : ''}
         <div class="post-detail-eyebrow">Plano de conteúdos — ${escapeHtml(client.name)}</div>
-        <h1 class="post-detail-title">Post ${idx+1}</h1>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px;">
+          <h1 class="post-detail-title" style="margin:0;">Post ${idx+1} · ${escapeHtml(client.name)}</h1>
+          <span class="status-pill ${p.copyStatus}">${statusLabel('copy',p.copyStatus)}</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button class="btn-small btn-ghost nav-post" data-dir="prev" ${idx===0?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>&larr; Post anterior</button>
+          <button class="btn-small btn-ghost nav-post" data-dir="next" ${idx===client.posts.length-1?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>Próximo post &rarr;</button>
+        </div>
         <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
         ${isTeam ? `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -1211,14 +1300,15 @@ function attachHandlers(){
   $$('.client-card[data-idx]').forEach(card=>{
     card.onclick = ()=>{
       state.currentPostIdx = parseInt(card.getAttribute('data-idx'),10);
+      state.postDetailOrigin = 'team-comments-history';
       state.view = 'team-post';
       render();
     };
   });
   if($('#back-intro')) $('#back-intro').onclick = ()=>{ state.view = state.role==='team' ? 'team-intro' : 'client-intro'; render(); };
-  if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
+  if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view = state.postDetailOrigin || (state.role==='team' ? 'team-calendar' : 'client-calendar'); render(); };
   $$('.calendar-row').forEach(row=>{
-    row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.view = state.role==='team' ? 'team-post' : 'client-post'; render(); };
+    row.onclick = ()=>{ state.currentPostIdx = parseInt(row.getAttribute('data-idx'),10); state.postDetailOrigin = state.role==='team' ? 'team-calendar' : 'client-calendar'; state.view = state.role==='team' ? 'team-post' : 'client-post'; render(); };
   });
   if($('#cancel-generation')) $('#cancel-generation').onclick = ()=>{ state.cancelRequested = true; showToast('Cancelando...'); };
 
@@ -1313,6 +1403,7 @@ function attachHandlers(){
       state.currentSlug = slug;
       state.currentClient = await apiGet('getClient', {slug});
       state.currentPostIdx = postIdx;
+      state.postDetailOrigin = 'team-calendario-geral';
       state.view = 'team-post';
       render();
     };
@@ -1338,6 +1429,11 @@ function attachHandlers(){
     };
   });
   if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; };
+  if($('#f-legendaPorRedeSim')){
+    $('#f-legendaPorRedeSim').onchange = (e)=>{
+      $('#canais-separados-wrap').style.display = e.target.value === 'sim' ? 'block' : 'none';
+    };
+  }
 
   if($('#response-select')){
     (async ()=>{
@@ -1356,14 +1452,16 @@ function attachHandlers(){
 
   function fillBriefForm(brief){
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
-    ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
+    ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
       set('f-'+f, brief[f]);
     });
+    set('f-periodoAtracao', brief.periodoAtracao || brief.periodoInscricoes); // planilha original ainda usa "período de inscrições"
   }
   function readBriefFromForm(){
-    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
     const b = {};
     fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
+    b.periodoInscricoes = b.periodoAtracao; // campo removido da tela — reaproveita o mesmo valor
     return b;
   }
 
@@ -1374,13 +1472,14 @@ function attachHandlers(){
       if(!programa || !sobreEmpresa){ $('#brief-error').style.display='block'; return; }
       const brief = readBriefFromForm();
       const total = parseInt($('#f-total').value, 10);
-      const separarPorRede = $('#f-legendaPorRede') && $('#f-legendaPorRede').checked;
+      const separarPorRede = $('#f-legendaPorRedeSim') && $('#f-legendaPorRedeSim').value === 'sim';
+      const canaisSeparados = separarPorRede ? Array.from($$('.canal-separado-cb:checked')).map(cb=>cb.value) : [];
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
       state.cancelRequested = false; state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
         let posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
-        if(separarPorRede) posts = expandirPostsPorRede(posts);
+        if(canaisSeparados.length > 0) posts = expandirPostsPorRede(posts, canaisSeparados);
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
@@ -1442,11 +1541,21 @@ function attachHandlers(){
       if(!window.confirm('Excluir este post do plano? Isso não pode ser desfeito.')) return;
       state.currentClient.posts.splice(idx, 1);
       await apiPost('saveClient', {client: state.currentClient});
-      state.view = state.role==='team' ? 'team-calendar' : 'client-calendar';
+      state.view = state.postDetailOrigin || (state.role==='team' ? 'team-calendar' : 'client-calendar');
       render();
       showToast('Post excluído.');
     };
   }
+
+  $$('.nav-post').forEach(btn=>{
+    btn.onclick = ()=>{
+      const dir = btn.getAttribute('data-dir');
+      const novoIdx = dir === 'prev' ? state.currentPostIdx - 1 : state.currentPostIdx + 1;
+      if(novoIdx < 0 || novoIdx >= state.currentClient.posts.length) return;
+      state.currentPostIdx = novoIdx;
+      render();
+    };
+  });
 
   if($('.quick-status')){
     $('.quick-status').onchange = async (e)=>{
@@ -1509,6 +1618,7 @@ function attachHandlers(){
       state.currentClient.posts.push(novoPost);
       state.currentPostIdx = state.currentClient.posts.length - 1;
       await apiPost('saveClient', {client: state.currentClient});
+      state.postDetailOrigin = 'team-calendar';
       state.view = 'team-post';
       render();
       showToast('Post adicionado — edite os campos abaixo.');
