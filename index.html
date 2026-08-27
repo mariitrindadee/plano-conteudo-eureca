@@ -6,6 +6,7 @@
 <title>Eureca · Plano de Conteúdos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
   :root{
     --ink:#211F2E; --ink-soft:#3E3C4C; --mint:#71FFB4; --mint-soft:#99FFBB;
@@ -21,7 +22,8 @@
   a{color:inherit;}
   ::selection{background:var(--mint);color:var(--ink);}
 
-  .screen{min-height:100vh;display:flex;flex-direction:column;}
+  html,body{min-height:100%;}
+  .screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;}
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;background:var(--ink);color:var(--paper);flex-wrap:wrap;gap:10px;}
   .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk';font-weight:700;font-size:19px;}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--mint);}
@@ -197,6 +199,8 @@
 
 <script>
 /* ==================== STATE ==================== */
+const LOGO_EURECA = "data:image/png;base64,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";
+
 let state = {
   view: 'setup', currentSlug: null, currentClient: null, clientsIndex: [],
   genProgress: { pct: 0, log: '' }, formResponses: [], currentPostIdx: null, cancelRequested: false, role: null
@@ -363,6 +367,51 @@ function compressImage(file, maxDim, quality){
   });
 }
 
+/* ==================== EXPORTAR PLANO EM PPTX ==================== */
+async function exportarPlanoPPTX(slug, nome){
+  showToast('Gerando PPTX...');
+  const client = await apiGet('getClient', {slug});
+  if(!client){ showToast('Não foi possível carregar o plano.'); return; }
+
+  const pres = new PptxGenJS();
+  pres.layout = 'LAYOUT_WIDE';
+  const INK = '211F2E', MINT = '71FFB4', TEAL = '1D8674', GREY = '888888';
+
+  const capa = pres.addSlide();
+  capa.background = { color: INK };
+  capa.addText('eureca', { x:0.5, y:0.4, fontSize:20, bold:true, color:MINT, fontFace:'Arial' });
+  capa.addText('PLANO DE CONTEÚDOS', { x:0.5, y:2.6, fontSize:14, color:MINT, bold:true, fontFace:'Arial' });
+  capa.addText(nome, { x:0.5, y:3.0, fontSize:36, color:'FFFFFF', bold:true, fontFace:'Arial', w:12 });
+
+  client.posts.forEach((p, idx)=>{
+    const slide = pres.addSlide();
+    slide.background = { color:'FFFFFF' };
+    slide.addText(`PLANO DE CONTEÚDOS — ${nome}`, { x:0.5, y:0.3, fontSize:9, color:GREY, bold:true, fontFace:'Arial' });
+    slide.addText(`Post ${idx+1}`, { x:0.5, y:0.6, fontSize:28, color:TEAL, bold:true, fontFace:'Arial' });
+    slide.addText(`${p.tema||''}${p.formato ? ' / '+p.formato : ''}`, { x:0.5, y:1.25, fontSize:13, color:INK, bold:true, fontFace:'Arial', w:12 });
+    slide.addText(`DATA DA POSTAGEM: ${p.data||'A definir'}    HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:1.65, fontSize:10, color:INK, bold:true, fontFace:'Arial' });
+
+    slide.addText('COPY', { x:0.5, y:2.15, fontSize:9, color:TEAL, bold:true, fontFace:'Arial' });
+    slide.addText(p.copy||'', { x:0.5, y:2.4, fontSize:10, color:INK, fontFace:'Arial', w:6.2, h:3.5, valign:'top' });
+
+    let yLeg = 2.15;
+    Object.keys(p.legendas||{}).forEach(canal=>{
+      if(!p.legendas[canal]) return;
+      slide.addText('LEGENDA ' + canal.toUpperCase(), { x:7, y:yLeg, fontSize:9, color:TEAL, bold:true, fontFace:'Arial' });
+      slide.addText(p.legendas[canal], { x:7, y:yLeg+0.25, fontSize:9.5, color:INK, fontFace:'Arial', w:5.8, h:1.8, valign:'top' });
+      yLeg += 2.2;
+    });
+  });
+
+  const fim = pres.addSlide();
+  fim.background = { color: INK };
+  fim.addText('eureca', { x:0.5, y:3.4, fontSize:24, bold:true, color:MINT, fontFace:'Arial' });
+  fim.addText('Muito obrigado.', { x:0.5, y:4.0, fontSize:14, color:'FFFFFF', fontFace:'Arial' });
+
+  await pres.writeFile({ fileName: `Plano de Conteúdos - ${nome}.pptx` });
+  showToast('Download iniciado!');
+}
+
 function guessRowLabel(row, i){
   let ts='', name='';
   for(const k in row){
@@ -411,11 +460,10 @@ function renderWelcome(){
   return `
   <div class="center-wrap"><div class="blob b1"></div><div class="blob b2"></div>
     <div class="auth-card">
-      <div class="eyebrow">Eureca · Conteúdo</div>
+      <img src="${LOGO_EURECA}" alt="Eureca" style="height:44px;display:block;margin-bottom:18px;">
       <h1>Plano de Conteúdos</h1>
-      <p class="sub">Gere, revise e acompanhe o plano de conteúdo do mês num só lugar — da copy à publicação.</p>
-      <div class="field">
-        <button class="btn-primary" id="go-team" style="margin-bottom:10px;">Sou da equipe (especialista)</button>
+      <div class="field" style="margin-top:26px;">
+        <button class="btn-primary" id="go-team" style="margin-bottom:10px;">Time Eureca</button>
         <button class="btn-primary btn-mint" id="go-client">Sou cliente — ver meu plano</button>
       </div>
       <button class="link-btn" id="change-api-url" style="margin-top:16px;">Trocar configuração de conexão</button>
@@ -429,7 +477,7 @@ function renderTeamLogin(){
       <button class="link-btn" id="back-welcome" style="margin-bottom:16px;">&larr; voltar</button>
       <div class="eyebrow">Acesso da equipe</div>
       <h1>Entrar</h1>
-      <p class="sub">Senha compartilhada entre as especialistas dos 6 times.</p>
+      <p class="sub">Em caso de dúvidas sobre a senha, buscar mariana.martins@eureca.me.</p>
       <div class="field"><label>Senha da equipe</label><input type="password" id="team-pass" placeholder="•••••••••" /></div>
       <div class="error-msg" id="team-error" style="display:none;">Senha incorreta.</div>
       <button class="btn-primary" id="team-submit">Entrar</button>
@@ -454,11 +502,17 @@ function renderClientLogin(){
 function renderTeamDashboard(){
   const cards = state.clientsIndex.map(c=>{
     const total = c.totalPosts||0, copyOk = c.copyAprovado||0, artOk = c.arteAprovada||0, pub = c.publicado||0;
+    const dataGerado = c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '—';
     return `
     <div class="client-card" data-slug="${c.slug}" style="position:relative;">
       <button class="delete-client-btn" data-slug="${c.slug}" data-name="${escapeAttr(c.name)}" title="Excluir plano" style="position:absolute;top:14px;right:14px;background:none;color:var(--grey);font-size:16px;line-height:1;padding:4px;">✕</button>
       <h3 style="padding-right:20px;">${escapeHtml(c.name)}</h3>
-      <div style="font-size:12px;color:var(--grey)">${total} posts no plano</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+        <div style="font-size:12px;color:var(--grey)">Gerado em ${dataGerado} · ${total} posts</div>
+        <button class="download-plan-btn" data-slug="${c.slug}" data-name="${escapeAttr(c.name)}" title="Baixar plano em PPTX" style="background:var(--paper-dim);border-radius:8px;padding:6px;line-height:0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+      </div>
       <div class="status-row">
         <span class="chip ok">${copyOk} copy aprovada</span>
         <span class="chip info">${artOk} arte aprovada</span>
@@ -468,9 +522,9 @@ function renderTeamDashboard(){
   }).join('');
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca · Painel da equipe</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA}" alt="Eureca" style="height:32px;display:block;"> <span style="font-size:13px;font-weight:500;color:#C9C6D6;margin-left:4px;">· Painel da equipe</span></div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
     <div class="main">
-      <div class="main-header"><div><h1>Clientes</h1><p>Todos os times veem todos os clientes. Crie um novo plano ou acompanhe o andamento.</p></div></div>
+      <div class="main-header"><div><h1>Clientes</h1><p>Encontre o plano de conteúdos do seu cliente.</p></div></div>
       ${state.clientsIndex.length ? `<div class="client-grid">${cards}</div>` : `<div class="empty-state">Nenhum cliente ainda. Clique em "Novo plano" para começar.</div>`}
     </div>
     <button class="fab" id="new-plan">+ Novo plano</button>
@@ -483,7 +537,7 @@ function renderBriefForm(editMode){
   const total = editMode ? (state.currentClient.posts ? state.currentClient.posts.length : 10) : 10;
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca · Painel da equipe</div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA}" alt="Eureca" style="height:32px;display:block;"> <span style="font-size:13px;font-weight:500;color:#C9C6D6;margin-left:4px;">· Painel da equipe</span></div><div class="topbar-actions"><button class="pill-btn" id="logout">Sair</button></div></div>
     <div class="main">
       <button class="back-link" id="${editMode ? 'back-review' : 'back-dashboard'}">&larr; ${editMode ? 'Voltar ao plano' : 'Voltar aos clientes'}</button>
       <div class="form-card">
@@ -563,7 +617,7 @@ function renderClientIntro(isTeam){
   const periodo = client.brief.periodoAtracao || client.brief.periodoInscricoes || '';
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA}" alt="Eureca" style="height:32px;display:block;"></div>
       <div class="topbar-actions">
         ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
       </div>
@@ -612,7 +666,7 @@ function renderClientCalendar(isTeam){
     </div>`).join('');
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA}" alt="Eureca" style="height:32px;display:block;"></div>
       <div class="topbar-actions">
         ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
       </div>
@@ -632,14 +686,16 @@ function renderClientPostDetail(isTeam){
   const p = client.posts[idx];
 
   const moveControls = isTeam ? `
-    <div style="display:flex;gap:8px;margin-bottom:18px;">
-      <button class="btn-small btn-ghost move-post" data-idx="${idx}" data-dir="up" ${idx===0?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>↑ Subir</button>
-      <button class="btn-small btn-ghost move-post" data-idx="${idx}" data-dir="down" ${idx===client.posts.length-1?'disabled style="opacity:0.35;cursor:not-allowed;"':''}>↓ Descer</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);">Alterar posição:</label>
+      <select id="change-position" data-idx="${idx}" style="width:auto;padding:8px 12px;font-size:13px;">
+        ${client.posts.map((_,i)=>`<option value="${i}" ${i===idx?'selected':''}>Post ${i+1}</option>`).join('')}
+      </select>
     </div>` : '';
 
   return `
   <div class="screen" style="background:var(--paper-dim);">
-    <div class="topbar"><div class="brand"><span class="dot"></span>Eureca</div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA}" alt="Eureca" style="height:32px;display:block;"></div>
       <div class="topbar-actions">
         ${isTeam ? `<button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button>` : `<button class="pill-btn" id="logout">Sair</button>`}
       </div>
@@ -652,6 +708,15 @@ function renderClientPostDetail(isTeam){
         <div class="post-detail-eyebrow">Plano de conteúdos — ${escapeHtml(client.name)}</div>
         <h1 class="post-detail-title">Post ${idx+1}</h1>
         <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
+        ${isTeam ? `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <label style="font-size:12px;font-weight:700;color:var(--ink-soft);">Status rápido:</label>
+          <select class="quick-status" data-idx="${idx}">
+            <option value="pendente" ${p.copyStatus==='pendente'?'selected':''}>Em validação</option>
+            <option value="aprovado" ${p.copyStatus==='aprovado'?'selected':''}>Aprovado</option>
+            <option value="alteracao" ${p.copyStatus==='alteracao'?'selected':''}>Reprovado</option>
+          </select>
+        </div>` : ''}
         <div class="post-detail-meta">
           DATA DA POSTAGEM: ${escapeHtml(p.data||'A definir')}<br>
           HORÁRIO: ${escapeHtml(p.horario||'A definir')}
@@ -751,7 +816,7 @@ function renderCopyStage(p, idx, isTeam){
 }
 
 function renderArtStage(p, idx, isTeam){
-  const unlocked = p.copyStatus === 'aprovado';
+  const unlocked = isTeam || p.copyStatus === 'aprovado';
   if(!unlocked){
     return `<div class="stage"><div class="stage-head"><span class="stage-title">Etapa 2 · Arte</span><span class="status-pill locked">Bloqueado</span></div><div class="locked-note">Libera quando a copy for aprovada.</div></div>`;
   }
@@ -959,17 +1024,37 @@ function attachHandlers(){
     };
   });
 
-  $$('.move-post').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const idx = parseInt(btn.getAttribute('data-idx'),10);
-      const dir = btn.getAttribute('data-dir');
-      const posts = state.currentClient.posts;
-      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
-      if(targetIdx < 0 || targetIdx >= posts.length) return;
-      [posts[idx], posts[targetIdx]] = [posts[targetIdx], posts[idx]];
+  if($('.quick-status')){
+    $('.quick-status').onchange = async (e)=>{
+      const idx = parseInt(e.target.getAttribute('data-idx'),10);
+      state.currentClient.posts[idx].copyStatus = e.target.value;
       await apiPost('saveClient', {client: state.currentClient});
       render();
-      showToast('Ordem atualizada.');
+      showToast('Status atualizado.');
+    };
+  }
+
+  if($('#change-position')){
+    $('#change-position').onchange = async (e)=>{
+      const fromIdx = parseInt(e.target.getAttribute('data-idx'),10);
+      const toIdx = parseInt(e.target.value,10);
+      if(fromIdx === toIdx) return;
+      const posts = state.currentClient.posts;
+      const [moved] = posts.splice(fromIdx, 1);
+      posts.splice(toIdx, 0, moved);
+      state.currentPostIdx = toIdx;
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast(`Post movido para a posição ${toIdx+1}.`);
+    };
+  }
+
+  $$('.download-plan-btn').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const slug = btn.getAttribute('data-slug');
+      const name = btn.getAttribute('data-name');
+      await exportarPlanoPPTX(slug, name);
     };
   });
 
