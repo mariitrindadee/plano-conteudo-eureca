@@ -712,18 +712,26 @@ function renderClientPostDetail(isTeam){
         <h1 class="post-detail-title">Post ${idx+1}</h1>
         <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
         ${isTeam ? `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
           <label style="font-size:12px;font-weight:700;color:var(--ink-soft);">Status rápido:</label>
           <select class="quick-status" data-idx="${idx}">
             <option value="pendente" ${p.copyStatus==='pendente'?'selected':''}>Em validação</option>
             <option value="aprovado" ${p.copyStatus==='aprovado'?'selected':''}>Aprovado</option>
             <option value="alteracao" ${p.copyStatus==='alteracao'?'selected':''}>Reprovado</option>
           </select>
-        </div>` : ''}
+        </div>
+        <div class="grid-2" style="max-width:420px;margin-bottom:18px;">
+          <div class="field-block"><div class="label">Data da postagem</div><input type="date" class="edit-data" data-idx="${idx}" value="${/^\d{4}-\d{2}-\d{2}$/.test(p.data) ? p.data : ''}" /></div>
+          <div class="field-block"><div class="label">Horário</div>
+            <select class="edit-horario" data-idx="${idx}">
+              ${['A definir','08h','09h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'].map(h=>`<option value="${h}" ${p.horario===h?'selected':''}>${h}</option>`).join('')}
+            </select>
+          </div>
+        </div>` : `
         <div class="post-detail-meta">
           DATA DA POSTAGEM: ${escapeHtml(p.data||'A definir')}<br>
           HORÁRIO: ${escapeHtml(p.horario||'A definir')}
-        </div>
+        </div>`}
 
         <div class="post-detail-grid">
           <div>
@@ -808,20 +816,9 @@ function renderCopyStage(p, idx, isTeam){
       </div>
     </div>` : '';
 
-  const horarioOpcoes = ['A definir','08h','09h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'];
-  const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(p.data) ? p.data : '';
-
   const adminEdit = isTeam ? `
     <div class="admin-post-edit">
       <div class="field-block"><div class="label">Editar tema</div><input type="text" class="edit-tema" data-idx="${idx}" value="${escapeAttr(p.tema)}" /></div>
-      <div class="grid-2">
-        <div class="field-block"><div class="label">Data da postagem</div><input type="date" class="edit-data" data-idx="${idx}" value="${dataValida}" /></div>
-        <div class="field-block"><div class="label">Horário</div>
-          <select class="edit-horario" data-idx="${idx}">
-            ${horarioOpcoes.map(h=>`<option value="${h}" ${p.horario===h?'selected':''}>${h}</option>`).join('')}
-          </select>
-        </div>
-      </div>
       <div class="edit-actions">
         <button class="btn-small btn-ghost save-edit" data-idx="${idx}">Salvar edição</button>
         <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar post inteiro com IA</button>
@@ -855,6 +852,7 @@ function renderArtStage(p, idx, isTeam){
 
   const teamControls = isTeam ? `
     <label class="art-upload-label">${p.artImageUrl ? 'Trocar arte' : 'Subir arte'}<input type="file" accept="image/*" class="art-upload-input upload-art" data-idx="${idx}" /></label>
+    ${p.artImageUrl ? `<button class="btn-small btn-ghost delete-art" data-idx="${idx}" style="margin-left:8px;">Excluir arte</button>` : ''}
   ` : '';
 
   const clientActions = (!isTeam && p.artStatus === 'enviada') ? `
@@ -911,7 +909,7 @@ function attachHandlers(){
   if($('#go-team')) $('#go-team').onclick = ()=>{ state.view='team-login'; render(); };
   if($('#go-client')) $('#go-client').onclick = ()=>{ state.view='client-login'; render(); };
   if($('#back-welcome')) $('#back-welcome').onclick = ()=>{ state.view='welcome'; render(); };
-  if($('#logout')) $('#logout').onclick = ()=>{ state = {...state, view:'welcome', currentSlug:null, currentClient:null, role:null}; render(); };
+  if($('#logout')) $('#logout').onclick = ()=>{ localStorage.removeItem('eureca-session'); state = {...state, view:'welcome', currentSlug:null, currentClient:null, role:null}; render(); };
   if($('#back-dashboard')) $('#back-dashboard').onclick = async ()=>{ state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); };
   if($('#edit-brief')) $('#edit-brief').onclick = ()=>{ state.view='team-edit-brief'; render(); };
   if($('#back-review')) $('#back-review').onclick = ()=>{ state.view='team-intro'; render(); };
@@ -923,7 +921,7 @@ function attachHandlers(){
       btn.disabled = true; const originalText = btn.textContent; btn.textContent = 'Entrando...';
       try{
         const ok = await apiGet('checkTeamPasscode', {pass: $('#team-pass').value});
-        if(ok){ state.role='team'; state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); return; }
+        if(ok){ state.role='team'; localStorage.setItem('eureca-session', JSON.stringify({role:'team'})); state.clientsIndex = await apiGet('getClientsIndex'); state.view='team-dashboard'; render(); return; }
         else if(errEl){ errEl.textContent = 'Senha incorreta.'; errEl.style.display='block'; }
       }catch(err){
         if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
@@ -940,7 +938,7 @@ function attachHandlers(){
         const name = $('#client-name').value.trim();
         const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
         const client = await apiGet('getClient', {slug});
-        if(client){ state.role='client'; state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); return; }
+        if(client){ state.role='client'; localStorage.setItem('eureca-session', JSON.stringify({role:'client', slug})); state.currentSlug = slug; state.currentClient = client; state.view='client-intro'; render(); return; }
         else if(errEl){ errEl.textContent = 'Não encontramos um plano com esse nome.'; errEl.style.display='block'; }
       }catch(err){
         if(errEl){ errEl.textContent = 'Não foi possível conectar à API. Erro: ' + err.message; errEl.style.display='block'; }
@@ -1232,6 +1230,19 @@ function attachHandlers(){
     };
   });
 
+  $$('.delete-art').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      if(!window.confirm('Excluir a arte deste post?')) return;
+      const post = state.currentClient.posts[idx];
+      post.artImageUrl = '';
+      post.artStatus = 'aguardando';
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast('Arte excluída.');
+    };
+  });
+
   $$('.upload-art').forEach(input=>{
     input.onchange = async (e)=>{
       const idx = parseInt(input.getAttribute('data-idx'),10);
@@ -1263,8 +1274,22 @@ function attachHandlers(){
   });
 }
 
-state.view = 'welcome';
-render();
+async function initApp(){
+  state.view = 'welcome';
+  try{
+    const saved = JSON.parse(localStorage.getItem('eureca-session') || 'null');
+    if(saved && saved.role === 'team'){
+      state.role = 'team';
+      state.clientsIndex = await apiGet('getClientsIndex');
+      state.view = 'team-dashboard';
+    } else if(saved && saved.role === 'client' && saved.slug){
+      const client = await apiGet('getClient', {slug: saved.slug});
+      if(client){ state.role = 'client'; state.currentSlug = saved.slug; state.currentClient = client; state.view = 'client-intro'; }
+    }
+  }catch(e){ /* sessão inválida, mantém tela de boas-vindas */ }
+  render();
+}
+initApp();
 </script>
 </body>
 </html>
