@@ -116,6 +116,7 @@
   .status-pill.aprovado,.status-pill.aprovada,.status-pill.publicado{background:#DFF9EB;color:var(--teal);}
   .status-pill.alteracao{background:#FDF1DC;color:#B4791F;}
   .status-pill.descartado{background:#F1F0F5;color:var(--grey);text-decoration:line-through;}
+  .status-pill.avisado{background:#E9F0FF;color:var(--blue);}
   .status-pill.enviada,.status-pill.agendado{background:#E9F0FF;color:var(--blue);}
   .status-pill.locked{background:#F1F0F5;color:#B7B4C2;}
 
@@ -309,6 +310,28 @@ function sleep_(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
 // Gemini 2.5 Flash Lite permite 10 chamadas por minuto nesta conta — 7s de
 // intervalo mantém uma margem segura sem exagerar na espera.
 const GEMINI_FREE_TIER_PACING_MS = 7000;
+
+// Quando o cliente precisa de conteúdo diferente por rede, transforma cada
+// post (que já tem uma legenda por canal) em VÁRIOS posts independentes,
+// um por canal, cada um com sua própria arte/status.
+function expandirPostsPorRede(posts){
+  const expandido = [];
+  posts.forEach(post=>{
+    const canais = Object.keys(post.legendas||{}).filter(c=>post.legendas[c]);
+    if(canais.length <= 1){ expandido.push(post); return; }
+    canais.forEach((canal, i)=>{
+      const clone = JSON.parse(JSON.stringify(post));
+      clone.id = post.id + '-' + canal.toLowerCase().replace(/\s+/g,'-') + '-' + i;
+      clone.tema = post.tema + ' · ' + canal;
+      clone.canais = canal;
+      clone.legendas = { [canal]: post.legendas[canal] };
+      clone.artImageUrl = ''; clone.artStatus = 'aguardando'; clone.artComments = [];
+      clone.fieldStatus = {}; clone.fieldComments = {};
+      expandido.push(clone);
+    });
+  });
+  return expandido;
+}
 
 async function generatePlanWithProgress(brief, total, onProgress){
   const posts = [];
@@ -599,7 +622,7 @@ function renderCalendarioGeral(){
         const conflitoStyle = conflitante ? 'border:1.5px solid var(--danger);' : '';
         const conflitoIcone = conflitante ? '⚠️ ' : '';
         if(it.tipo === 'evento'){
-          return `<div class="cal-item evento" style="${conflitoStyle}" title="${escapeAttr((conflitante?'CONFLITO DE HORÁRIO — ':'')+(it.categoria?it.categoria+': ':'')+it.titulo)}">${conflitoIcone}${horarioTxt}${escapeHtml(it.titulo)}</div>`;
+          return `<div class="cal-item evento" data-slug="${escapeAttr(it.clientSlug)}" data-eventoid="${escapeAttr(it.eventoId)}" style="${conflitoStyle}" title="${escapeAttr((conflitante?'CONFLITO DE HORÁRIO — ':'')+(it.categoria?it.categoria+': ':'')+it.titulo)}">${conflitoIcone}${horarioTxt}${escapeHtml(it.titulo)}</div>`;
         }
         return `<div class="cal-item post" style="${conflitoStyle}" data-slug="${escapeAttr(it.clientSlug)}" data-postidx="${it.postIndex}" title="${escapeAttr((conflitante?'CONFLITO DE HORÁRIO — ':'')+it.clientName+' — '+it.tema)}">${conflitoIcone}${horarioTxt}${escapeHtml(it.clientName)}</div>`;
       }).join('');
@@ -645,7 +668,10 @@ function renderCalendarioGeral(){
           <div class="field"><label>Data</label><input type="date" id="evento-data" /></div>
           <div class="field"><label>Horário</label><input type="text" id="evento-horario" placeholder="Ex: 14h" /></div>
         </div>
-        <button class="btn-small btn-mint" id="save-evento">Salvar evento</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-small btn-mint" id="save-evento">Salvar evento</button>
+          <button class="btn-small btn-ghost" id="delete-evento" style="display:none;color:var(--danger);">Excluir evento</button>
+        </div>
       </div>
 
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
@@ -720,6 +746,13 @@ function renderBriefForm(editMode){
           </div>
         </div>
         <div class="field"><label>Algo que não foi perguntado</label><textarea id="f-algoMais">${escapeHtml(b.algoMais)}</textarea></div>
+        ${!editMode ? `
+        <div class="field" style="background:var(--paper-dim);border:1.5px solid var(--line);border-radius:12px;padding:14px;">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="f-legendaPorRede" style="width:auto;margin-top:2px;" />
+            <span>Este cliente precisa de <b>legenda e arte diferentes por rede social</b>? Se marcar, cada post vira um card separado por rede (ex: "Post 1 · Instagram", "Post 1 · LinkedIn"), cada um com sua própria arte.</span>
+          </label>
+        </div>` : ''}
 
         <div class="error-msg" id="brief-error" style="display:none;">Preencha ao menos o nome do programa e "Sobre a empresa".</div>
         ${editMode ? `
@@ -954,7 +987,7 @@ function formatarData(data){
 
 function statusLabel(kind, val){
   const map = {
-    copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração', descartado:'Descartado'},
+    copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração', descartado:'Descartado', avisado:'Equipe já avisada'},
     art: {aguardando:'Aguardando arte', enviada:'Arte enviada', aprovada:'Arte aprovada', alteracao:'Ajuste na arte pedido'},
     pub: {nao_agendado:'Não agendado', agendado:'Agendado', publicado:'Publicado'}
   };
@@ -1222,7 +1255,13 @@ function attachHandlers(){
   if($('#toggle-evento-form')){
     $('#toggle-evento-form').onclick = ()=>{
       const panel = $('#evento-form-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      const abrindo = panel.style.display === 'none';
+      panel.style.display = abrindo ? 'block' : 'none';
+      if(abrindo){
+        state.editingEventoId = null; state.editingEventoSlug = null;
+        $('#evento-titulo').value = ''; $('#evento-data').value = ''; $('#evento-horario').value = '';
+        $('#delete-evento').style.display = 'none';
+      }
     };
   }
   if($('#save-evento')){
@@ -1237,12 +1276,34 @@ function attachHandlers(){
       try{
         const client = await apiGet('getClient', {slug});
         client.eventos = client.eventos || [];
-        client.eventos.push({ id: 'evento-'+Date.now(), titulo, tipo, data, horario });
+        if(state.editingEventoId){
+          const ev = client.eventos.find(e=>e.id === state.editingEventoId);
+          if(ev){ ev.titulo = titulo; ev.tipo = tipo; ev.data = data; ev.horario = horario; }
+        } else {
+          client.eventos.push({ id: 'evento-'+Date.now(), titulo, tipo, data, horario });
+        }
         await apiPost('saveClient', {client});
         state.calendarioGeral = await apiGet('getAllPostsForCalendar');
+        state.editingEventoId = null;
         render();
-        showToast('Evento adicionado!');
+        showToast(state.editingEventoId ? 'Evento atualizado!' : 'Evento adicionado!');
       }catch(e){ showToast('Erro ao salvar evento: ' + e.message); btn.disabled = false; btn.textContent = 'Salvar evento'; }
+    };
+  }
+  if($('#delete-evento')){
+    $('#delete-evento').onclick = async ()=>{
+      if(!state.editingEventoId || !state.editingEventoSlug) return;
+      if(!window.confirm('Excluir este evento?')) return;
+      try{
+        const client = await apiGet('getClient', {slug: state.editingEventoSlug});
+        client.eventos = (client.eventos||[]).filter(e=>e.id !== state.editingEventoId);
+        await apiPost('saveClient', {client});
+        state.calendarioGeral = await apiGet('getAllPostsForCalendar');
+        state.editingEventoId = null; state.editingEventoSlug = null;
+        $('#evento-form-panel').style.display = 'none';
+        render();
+        showToast('Evento excluído.');
+      }catch(e){ showToast('Erro ao excluir: ' + e.message); }
     };
   }
   $$('.cal-item.post').forEach(item=>{
@@ -1254,6 +1315,26 @@ function attachHandlers(){
       state.currentPostIdx = postIdx;
       state.view = 'team-post';
       render();
+    };
+  });
+  $$('.cal-item.evento').forEach(item=>{
+    item.onclick = async ()=>{
+      const slug = item.getAttribute('data-slug');
+      const eventoId = item.getAttribute('data-eventoid');
+      const client = await apiGet('getClient', {slug});
+      const ev = (client.eventos||[]).find(e=>e.id === eventoId);
+      if(!ev) return;
+      state.editingEventoId = eventoId;
+      state.editingEventoSlug = slug;
+      const panel = $('#evento-form-panel');
+      panel.style.display = 'block';
+      $('#evento-cliente').value = slug;
+      $('#evento-titulo').value = ev.titulo;
+      $('#evento-tipo').value = ev.tipo;
+      $('#evento-data').value = ev.data;
+      $('#evento-horario').value = ev.horario;
+      $('#delete-evento').style.display = 'inline-block';
+      panel.scrollIntoView({behavior:'smooth', block:'center'});
     };
   });
   if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; };
@@ -1293,11 +1374,13 @@ function attachHandlers(){
       if(!programa || !sobreEmpresa){ $('#brief-error').style.display='block'; return; }
       const brief = readBriefFromForm();
       const total = parseInt($('#f-total').value, 10);
+      const separarPorRede = $('#f-legendaPorRede') && $('#f-legendaPorRede').checked;
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
       state.cancelRequested = false; state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
-        const posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
+        let posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
+        if(separarPorRede) posts = expandirPostsPorRede(posts);
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
@@ -1379,6 +1462,7 @@ function attachHandlers(){
     $('#send-feedback').onclick = async ()=>{
       const client = state.currentClient;
       const linhas = [];
+      const itensParaMarcar = []; // {postIdx, campo}
       client.posts.forEach((p, i)=>{
         const fs = p.fieldStatus || {};
         const fc = p.fieldComments || {};
@@ -1386,6 +1470,7 @@ function attachHandlers(){
           if(fs[campo] === 'alteracao'){
             const comentarios = (fc[campo]||[]).map(c=>c.text).join(' | ') || '(sem comentário adicional)';
             linhas.push(`Post ${i+1} — ${campo}: ${comentarios}`);
+            itensParaMarcar.push({ postIdx: i, campo });
           }
         });
       });
@@ -1399,7 +1484,14 @@ function attachHandlers(){
           itensTexto: linhas.join('\n'),
           linkPlano: location.origin + location.pathname
         });
-        if(result && result.ok){ showToast('Comentários enviados para a equipe!'); }
+        if(result && result.ok){
+          // Marca os itens enviados como "avisado" pra não repetir em envios futuros
+          itensParaMarcar.forEach(({postIdx, campo})=>{
+            client.posts[postIdx].fieldStatus[campo] = 'avisado';
+          });
+          await apiPost('saveClient', {client});
+          showToast('Comentários enviados para a equipe!');
+        }
         else { showToast('Não consegui enviar: ' + ((result && result.error) || 'erro desconhecido')); }
       }catch(e){ showToast('Erro ao enviar: ' + e.message); }
       btn.disabled = false; btn.textContent = original;
@@ -1562,7 +1654,10 @@ function attachHandlers(){
       const field = btn.getAttribute('data-field');
       const textarea = document.querySelector(`.manual-field-edit[data-idx="${idx}"][data-field="${CSS.escape(field)}"]`);
       if(!textarea) return;
-      applyFieldValue(state.currentClient.posts[idx], field, textarea.value);
+      const post = state.currentClient.posts[idx];
+      applyFieldValue(post, field, textarea.value);
+      post.fieldStatus = post.fieldStatus || {};
+      post.fieldStatus[field] = 'pendente';
       await apiPost('saveClient', {client: state.currentClient});
       render();
       showToast('Campo atualizado.');
@@ -1585,6 +1680,8 @@ function attachHandlers(){
         const result = await apiPost('regenerateField', {brief: state.currentClient.brief, post, field: fieldKey, canal, comentario});
         if(result && result.texto){
           applyFieldValue(post, field, result.texto);
+          post.fieldStatus = post.fieldStatus || {};
+          post.fieldStatus[field] = 'pendente';
           await apiPost('saveClient', {client: state.currentClient});
           render();
           showToast('Novo texto gerado.');
