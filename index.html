@@ -1334,6 +1334,7 @@ function attachHandlers(){
 }
 
 async function initApp(){
+  document.getElementById('app').innerHTML = `<div class="screen" style="align-items:center;justify-content:center;"><div class="progress-wrap"><div class="spinner"></div><h2>Carregando...</h2></div></div>`;
   state.view = 'welcome';
   try{
     const saved = JSON.parse(localStorage.getItem('eureca-session') || 'null');
