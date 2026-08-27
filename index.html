@@ -720,6 +720,10 @@ function renderClientPostDetail(isTeam){
             <option value="alteracao" ${p.copyStatus==='alteracao'?'selected':''}>Reprovado</option>
           </select>
         </div>
+        <div class="field-block" style="max-width:420px;">
+          <div class="label">Editar tema</div>
+          <input type="text" class="edit-tema" data-idx="${idx}" value="${escapeAttr(p.tema)}" />
+        </div>
         <div class="grid-2" style="max-width:420px;margin-bottom:18px;">
           <div class="field-block"><div class="label">Data da postagem</div><input type="date" class="edit-data" data-idx="${idx}" value="${/^\d{4}-\d{2}-\d{2}$/.test(p.data) ? p.data : ''}" /></div>
           <div class="field-block"><div class="label">Horário</div>
@@ -818,7 +822,6 @@ function renderCopyStage(p, idx, isTeam){
 
   const adminEdit = isTeam ? `
     <div class="admin-post-edit">
-      <div class="field-block"><div class="label">Editar tema</div><input type="text" class="edit-tema" data-idx="${idx}" value="${escapeAttr(p.tema)}" /></div>
       <div class="edit-actions">
         <button class="btn-small btn-ghost save-edit" data-idx="${idx}">Salvar edição</button>
         <button class="btn-small btn-ghost regen-post" data-idx="${idx}">Regenerar post inteiro com IA</button>
