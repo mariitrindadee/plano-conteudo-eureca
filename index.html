@@ -115,6 +115,7 @@
   .status-pill.pendente,.status-pill.aguardando,.status-pill.nao_agendado{background:#EFEDF5;color:var(--ink-soft);}
   .status-pill.aprovado,.status-pill.aprovada,.status-pill.publicado{background:#DFF9EB;color:var(--teal);}
   .status-pill.alteracao{background:#FDF1DC;color:#B4791F;}
+  .status-pill.descartado{background:#F1F0F5;color:var(--grey);text-decoration:line-through;}
   .status-pill.enviada,.status-pill.agendado{background:#E9F0FF;color:var(--blue);}
   .status-pill.locked{background:#F1F0F5;color:#B7B4C2;}
 
@@ -558,10 +559,10 @@ function renderBriefForm(editMode){
           <div class="field"><label>Nome do programa</label><input type="text" id="f-programa" placeholder="Ex: Programa de Estágio Banco BV" value="${v(b.programa)}" ${editMode?'disabled':''} /></div>
           <div class="field"><label>Tipo de programa</label><input type="text" id="f-tipoPrograma" placeholder="Ex: Estágio, Trainee" value="${v(b.tipoPrograma)}" /></div>
         </div>
+        <div class="field"><label>Tag interna do programa (organização interna Eureca, não aparece pro cliente)</label><input type="text" id="f-tagInterna" placeholder="Ex: [mrs.01.est] [natura.03.apz] [bradesco.09.trn]" value="${v(b.tagInterna)}" /></div>
         <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
         <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
         <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: Agosto a Setembro/2026" value="${v(b.periodoAtracao)}" /></div>
-        <div class="field"><label>Tag interna do programa (organização interna Eureca, não aparece pro cliente)</label><input type="text" id="f-tagInterna" placeholder="Ex: BV-EST-2026" value="${v(b.tagInterna)}" /></div>
 
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
         <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
@@ -711,6 +712,7 @@ function renderClientPostDetail(isTeam){
       <div class="post-detail-inner">
         <button class="back-link" id="back-calendar">&larr; Voltar ao calendário</button>
         ${moveControls}
+        ${isTeam ? `<button class="btn-small btn-ghost delete-post" data-idx="${idx}" style="margin-bottom:18px;color:var(--danger);">Excluir este post</button>` : ''}
         <div class="post-detail-eyebrow">Plano de conteúdos — ${escapeHtml(client.name)}</div>
         <h1 class="post-detail-title">Post ${idx+1}</h1>
         <div class="post-detail-subtitle">${escapeHtml(p.tema)} ${p.formato ? '/ '+escapeHtml(p.formato) : ''}</div>
@@ -721,6 +723,7 @@ function renderClientPostDetail(isTeam){
             <option value="pendente" ${p.copyStatus==='pendente'?'selected':''}>Em validação</option>
             <option value="aprovado" ${p.copyStatus==='aprovado'?'selected':''}>Aprovado</option>
             <option value="alteracao" ${p.copyStatus==='alteracao'?'selected':''}>Reprovado</option>
+            <option value="descartado" ${p.copyStatus==='descartado'?'selected':''}>Descartado</option>
           </select>
         </div>
         <div class="field-block" style="max-width:420px;">
@@ -781,7 +784,7 @@ function formatarData(data){
 
 function statusLabel(kind, val){
   const map = {
-    copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração'},
+    copy: {pendente:'Pendente de revisão', aprovado:'Aprovado', alteracao:'Pedido de alteração', descartado:'Descartado'},
     art: {aguardando:'Aguardando arte', enviada:'Arte enviada', aprovada:'Arte aprovada', alteracao:'Ajuste na arte pedido'},
     pub: {nao_agendado:'Não agendado', agendado:'Agendado', publicado:'Publicado'}
   };
@@ -1081,6 +1084,18 @@ function attachHandlers(){
       state.view = 'team-intro'; render();
     };
   });
+
+  if($('.delete-post')){
+    $('.delete-post').onclick = async ()=>{
+      const idx = parseInt($('.delete-post').getAttribute('data-idx'),10);
+      if(!window.confirm('Excluir este post do plano? Isso não pode ser desfeito.')) return;
+      state.currentClient.posts.splice(idx, 1);
+      await apiPost('saveClient', {client: state.currentClient});
+      state.view = state.role==='team' ? 'team-calendar' : 'client-calendar';
+      render();
+      showToast('Post excluído.');
+    };
+  }
 
   if($('.quick-status')){
     $('.quick-status').onchange = async (e)=>{
