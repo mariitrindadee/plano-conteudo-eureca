@@ -438,6 +438,7 @@ function render(){
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
   else if(state.view==='team-intro') app.innerHTML = renderClientIntro(true);
   else if(state.view==='team-calendar') app.innerHTML = renderClientCalendar(true);
+  else if(state.view==='team-comments-history') app.innerHTML = renderCommentsHistory();
   else if(state.view==='team-post') app.innerHTML = renderClientPostDetail(true);
   else if(state.view==='client-login') app.innerHTML = renderClientLogin();
   else if(state.view==='client-intro') app.innerHTML = renderClientIntro(false);
@@ -654,11 +655,54 @@ function renderClientIntro(isTeam){
         </div>
       </div>
       <button class="btn-primary btn-mint" id="go-calendar" style="max-width:280px;">Ver calendário de posts</button>
+      ${isTeam ? `<button class="link-btn" id="go-comments-history" style="margin-top:16px;">Ver histórico de comentários do cliente</button>` : ''}
     </div>
   </div>`;
 }
 
-/* ==================== CALENDÁRIO GERAL (equipe e cliente) ==================== */
+/* ==================== HISTÓRICO DE COMENTÁRIOS (equipe) ==================== */
+function renderCommentsHistory(){
+  const client = state.currentClient;
+  const blocos = client.posts.map((p, i)=>{
+    const itens = [];
+    const fc = p.fieldComments || {};
+    Object.keys(fc).forEach(campo=>{
+      (fc[campo]||[]).forEach(c=>{
+        itens.push({campo, status: (p.fieldStatus && p.fieldStatus[campo]) || 'pendente', ...c});
+      });
+    });
+    (p.artComments||[]).forEach(c=>{
+      itens.push({campo: 'arte', status: p.artStatus, ...c});
+    });
+    if(itens.length === 0) return '';
+    const linhas = itens.map(it=>`
+      <div class="comment-item" style="margin-bottom:6px;">
+        <div class="meta">${escapeHtml(it.author)} · ${it.date} · <b>${escapeHtml(it.campo)}</b> · <span class="status-pill ${it.status}" style="font-size:10px;padding:2px 8px;">${statusLabel(it.campo==='arte'?'art':'copy', it.status)}</span></div>
+        ${escapeHtml(it.text)}
+      </div>`).join('');
+    return `
+    <div class="client-card" style="cursor:pointer;" data-idx="${i}">
+      <h3>Post ${i+1} — ${escapeHtml(p.tema)}</h3>
+      <div style="margin-top:10px;">${linhas}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+      <div class="topbar-actions"><button class="pill-btn" id="edit-brief">Editar informações</button><button class="pill-btn" id="back-dashboard">Voltar</button></div>
+    </div>
+    <div class="main" style="padding-bottom:0;">
+      <button class="back-link" id="back-intro">&larr; Voltar</button>
+      <div class="main-header"><div><h1>Histórico de comentários</h1><p>Todos os comentários do cliente neste plano, organizados por post.</p></div></div>
+    </div>
+    <div class="main" style="padding-top:0;">
+      ${blocos ? `<div class="client-grid">${blocos}</div>` : `<div class="empty-state">Nenhum comentário do cliente ainda.</div>`}
+    </div>
+  </div>`;
+}
+
+
 function renderClientCalendar(isTeam){
   const client = state.currentClient;
   const rows = client.posts.map((p, idx)=>`
@@ -999,6 +1043,14 @@ function attachHandlers(){
     };
   }
   if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
+  if($('#go-comments-history')) $('#go-comments-history').onclick = ()=>{ state.view = 'team-comments-history'; render(); };
+  $$('.client-card[data-idx]').forEach(card=>{
+    card.onclick = ()=>{
+      state.currentPostIdx = parseInt(card.getAttribute('data-idx'),10);
+      state.view = 'team-post';
+      render();
+    };
+  });
   if($('#back-intro')) $('#back-intro').onclick = ()=>{ state.view = state.role==='team' ? 'team-intro' : 'client-intro'; render(); };
   if($('#back-calendar')) $('#back-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
   $$('.calendar-row').forEach(row=>{
