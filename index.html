@@ -348,12 +348,13 @@ function expandirPostsPorRede(posts, canaisSeparados){
   return expandido;
 }
 
-async function generatePlanWithProgress(brief, total, onProgress){
+async function generatePlanWithProgress(brief, total, onProgress, outline){
   const posts = [];
   for(let i=1;i<=total;i++){
     if(state.cancelRequested){ throw new Error('Geração cancelada.'); }
     onProgress(Math.round((i-1)/total*100), `Gerando post ${i} de ${total}...`);
-    const post = await apiPost('regeneratePost', {brief, index:i, total, outrosPosts: posts});
+    const sugestao = (outline && outline[i-1] && (outline[i-1].tema || outline[i-1].formato)) ? outline[i-1] : null;
+    const post = await apiPost('regeneratePost', {brief, index:i, total, outrosPosts: posts, sugestao});
     posts.push(post);
     if(i < total){
       if(state.cancelRequested){ throw new Error('Geração cancelada.'); }
@@ -456,61 +457,66 @@ async function exportarPlanoPPTX(slug, nome){
   client.posts.forEach((p, idx)=>{
     const slide = pres.addSlide();
     slide.background = { color:'FFFFFF' };
-    addBlob(slide, -1.5, 4.2, 5, 'C9A6F5', 80);
-    addBlob(slide, -0.5, 5.2, 4, '8FB6F0', 85);
 
     slide.addText(`PLANO DE CONTEÚDOS — ${nome.toUpperCase()}`, { x:0.5, y:0.28, fontSize:8.5, color:GREY, bold:true, fontFace:'Arial', charSpacing:1 });
+    slide.addText('eureca', { x:11.7, y:0.25, fontSize:12, color:TEAL, bold:true, fontFace:'Arial' });
     slide.addText(`Post ${idx+1}`, { x:0.5, y:0.55, fontSize:26, color:TEAL, bold:true, fontFace:'Arial' });
-    slide.addText(`${p.tema||''}`, { x:0.5, y:1.15, fontSize:12.5, color:INK, bold:true, fontFace:'Arial', w:12.2 });
+    slide.addText(`${p.tema||''}`, { x:0.5, y:1.15, fontSize:12.5, color:INK, bold:true, fontFace:'Arial', w:4.3 });
 
-    // Tags de formato/canais
-    const tagFormato = p.formato || '—';
-    const tagCanais = p.canais || '—';
-    slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:1.55, w:1.6, h:0.28, rectRadius:0.06, fill:{color:BLUE_BG}, line:{type:'none'} });
-    slide.addText(tagFormato, { x:0.5, y:1.55, w:1.6, h:0.28, fontSize:8.5, color:BLUE, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
-    slide.addShape(pres.ShapeType.roundRect, { x:2.2, y:1.55, w:1.8, h:0.28, rectRadius:0.06, fill:{color:PAPER_DIM}, line:{type:'none'} });
-    slide.addText(tagCanais, { x:2.2, y:1.55, w:1.8, h:0.28, fontSize:8.5, color:INK, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
+    // Metadados empilhados (formato, canal, data, horário, link)
+    const linhasMeta = [
+      { label:'FORMATO', valor: p.formato || '—' },
+      { label:'CANAL', valor: p.canais || '—' },
+      { label:'DATA DA POSTAGEM', valor: formatarData(p.data) },
+      { label:'HORÁRIO', valor: p.horario || 'A definir' }
+    ];
+    if(p.videoUrl) linhasMeta.push({ label:'LINK DO VÍDEO', valor: p.videoUrl, link:true });
+    let yMeta = 1.65;
+    linhasMeta.forEach(m=>{
+      slide.addText(m.label, { x:0.5, y:yMeta, fontSize:7.5, color:GREY, bold:true, fontFace:'Arial', charSpacing:0.5 });
+      slide.addText(m.valor, { x:0.5, y:yMeta+0.19, fontSize:9.5, color: m.link?BLUE:INK, bold:true, fontFace:'Arial', w:4.3, hyperlink: m.link?{url:m.valor}:undefined });
+      yMeta += 0.5;
+    });
 
     // Status
     const cs = statusCores(p.copyStatus);
-    slide.addShape(pres.ShapeType.roundRect, { x:10.5, y:1.55, w:2.3, h:0.28, rectRadius:0.06, fill:{color:cs.bg}, line:{type:'none'} });
-    slide.addText(statusLabel('copy', p.copyStatus), { x:10.5, y:1.55, w:2.3, h:0.28, fontSize:8.5, color:cs.fg, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
+    slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:yMeta+0.05, w:2.3, h:0.28, rectRadius:0.06, fill:{color:cs.bg}, line:{type:'none'} });
+    slide.addText(statusLabel('copy', p.copyStatus), { x:0.5, y:yMeta+0.05, w:2.3, h:0.28, fontSize:8.5, color:cs.fg, bold:true, fontFace:'Arial', align:'center', valign:'middle' });
 
-    slide.addText(`DATA DA POSTAGEM: ${formatarData(p.data)}      HORÁRIO: ${p.horario||'A definir'}`, { x:0.5, y:2.0, fontSize:9.5, color:INK, bold:true, fontFace:'Arial' });
+    // Copy (texto da peça gráfica)
+    let yEsq = yMeta + 0.55;
+    slide.addShape(pres.ShapeType.rect, { x:0.5, y:yEsq, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+    slide.addText('COPY', { x:0.5, y:yEsq+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+    slide.addText(p.copy||'', { x:0.5, y:yEsq+0.35, fontSize:9.5, color:INK, fontFace:'Arial', w:4.3, h:1.0, valign:'top' });
 
-    // Coluna esquerda: Copy + Roteiro + Arte
-    slide.addShape(pres.ShapeType.rect, { x:0.5, y:2.5, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
-    slide.addText('COPY', { x:0.5, y:2.58, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
-    slide.addText(p.copy||'', { x:0.5, y:2.85, fontSize:10, color:INK, fontFace:'Arial', w:6.2, h:1.7, valign:'top' });
-
-    let yEsq = 4.7;
     if(p.roteiro){
+      yEsq += 1.5;
       slide.addShape(pres.ShapeType.rect, { x:0.5, y:yEsq, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
       slide.addText('ROTEIRO', { x:0.5, y:yEsq+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
-      slide.addText(p.roteiro, { x:0.5, y:yEsq+0.35, fontSize:9, color:INK, fontFace:'Arial', w:6.2, h:1.2, valign:'top' });
-      yEsq += 1.7;
+      slide.addText(p.roteiro, { x:0.5, y:yEsq+0.35, fontSize:9, color:INK, fontFace:'Arial', w:4.3, h:1.0, valign:'top' });
     }
 
-    slide.addShape(pres.ShapeType.rect, { x:0.5, y:yEsq, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
-    slide.addText('ARTE', { x:0.5, y:yEsq+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+    // Arte em destaque, embaixo à esquerda, com degradê atrás (igual a capa)
+    const yArte = 5.05, hArte = 2.15, wArte = 4.3;
+    addBlob(slide, -1.2, yArte-0.6, 4.2, 'C9A6F5', 78);
+    addBlob(slide, 0.6, yArte+0.6, 3.4, '8FB6F0', 82);
     if(p.artImageUrl){
-      try{ slide.addImage({ data: p.artImageUrl, x:0.5, y:yEsq+0.35, w:2.4, h:2.4, sizing:{type:'contain', w:2.4, h:2.4} }); }catch(e){}
+      try{ slide.addImage({ data: p.artImageUrl, x:0.5, y:yArte, w:wArte, h:hArte, sizing:{type:'contain', w:wArte, h:hArte} }); }catch(e){}
     } else {
-      slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:yEsq+0.35, w:2.4, h:1.0, rectRadius:0.08, fill:{color:PAPER_DIM}, line:{color:LINE, width:1, dashType:'dash'} });
-      slide.addText('Arte ainda não enviada', { x:0.5, y:yEsq+0.35, w:2.4, h:1.0, fontSize:8.5, color:GREY, align:'center', valign:'middle', fontFace:'Arial' });
-    }
-    if(p.videoUrl){
-      slide.addText('▶ Ver vídeo', { x:0.5, y:yEsq+1.5, fontSize:9, color:TEAL, bold:true, fontFace:'Arial', hyperlink:{url:p.videoUrl} });
+      slide.addShape(pres.ShapeType.roundRect, { x:0.5, y:yArte, w:wArte, h:hArte, rectRadius:0.08, fill:{color:'FFFFFF'}, line:{color:LINE, width:1, dashType:'dash'} });
+      slide.addText('Arte ainda não enviada', { x:0.5, y:yArte, w:wArte, h:hArte, fontSize:9, color:GREY, align:'center', valign:'middle', fontFace:'Arial' });
     }
 
     // Coluna direita: uma legenda por canal
-    let yDir = 2.5;
+    let yDir = 1.15;
+    slide.addText('LEGENDA', { x:5.4, y:yDir, fontSize:9, color:GREY, bold:true, fontFace:'Arial', charSpacing:1 });
+    yDir += 0.35;
     Object.keys(p.legendas||{}).forEach(canal=>{
       if(!p.legendas[canal]) return;
-      slide.addShape(pres.ShapeType.rect, { x:7, y:yDir, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
-      slide.addText('LEGENDA ' + canal.toUpperCase(), { x:7, y:yDir+0.08, fontSize:9, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
-      slide.addText(p.legendas[canal], { x:7, y:yDir+0.35, fontSize:9.5, color:INK, fontFace:'Arial', w:5.8, h:1.9, valign:'top' });
-      yDir += 2.25;
+      slide.addShape(pres.ShapeType.rect, { x:5.4, y:yDir, w:0.3, h:0.03, fill:{color:TEAL}, line:{type:'none'} });
+      slide.addText(canal.toUpperCase(), { x:5.4, y:yDir+0.08, fontSize:8.5, color:INK, bold:true, fontFace:'Arial', charSpacing:1 });
+      slide.addText(p.legendas[canal], { x:5.4, y:yDir+0.32, fontSize:9.5, color:INK, fontFace:'Arial', w:7.1, h:2.6, valign:'top' });
+      yDir += 3.0;
     });
   });
 
@@ -518,8 +524,13 @@ async function exportarPlanoPPTX(slug, nome){
   const fim = pres.addSlide();
   fim.background = { color: INK };
   addBlob(fim, 8.5, 3, 6, 'C9A6F5', 55);
-  fim.addText('eureca', { x:0.6, y:3.3, fontSize:26, bold:true, color:MINT, fontFace:'Arial' });
-  fim.addText('Muito obrigado.', { x:0.6, y:3.95, fontSize:15, color:'FFFFFF', fontFace:'Arial' });
+  fim.addText('eureca', { x:0.6, y:3.1, fontSize:26, bold:true, color:MINT, fontFace:'Arial' });
+  fim.addText('Muito obrigado.', { x:0.6, y:3.75, fontSize:15, color:'FFFFFF', fontFace:'Arial' });
+  const emailResp = (client.brief && client.brief.emailEspecialista) || '';
+  if(emailResp){
+    fim.addText('Equipe Eureca', { x:7.6, y:3.75, fontSize:11, bold:true, color:'FFFFFF', fontFace:'Arial' });
+    fim.addText(emailResp, { x:7.6, y:4.05, fontSize:10, color:'C9C6D6', fontFace:'Arial' });
+  }
 
   await pres.writeFile({ fileName: `Plano de Conteúdos - ${nome}.pptx` });
   showToast('Download iniciado!');
@@ -817,6 +828,11 @@ function renderBriefForm(editMode){
             <div class="range-row"><input type="range" id="f-total" min="4" max="12" value="${total}" /><span class="range-val" id="f-total-val">${total}</span></div>
           </div>
         </div>
+        ${!editMode ? `
+        <div class="field">
+          <label>Tema e formato de cada post (opcional — deixe em branco pra IA decidir)</label>
+          <div id="posts-outline"></div>
+        </div>` : ''}
         <div class="field"><label>Algo que não foi perguntado</label><textarea id="f-algoMais">${escapeHtml(b.algoMais)}</textarea></div>
         ${!editMode ? `
         <div class="field" style="background:var(--paper-dim);border:1.5px solid var(--line);border-radius:12px;padding:14px;">
@@ -1428,7 +1444,38 @@ function attachHandlers(){
       panel.scrollIntoView({behavior:'smooth', block:'center'});
     };
   });
-  if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; };
+  function renderPostsOutline(total){
+    const container = $('#posts-outline');
+    if(!container) return;
+    // preserva o que já foi digitado antes de reconstruir
+    const anteriores = [];
+    container.querySelectorAll('.outline-row').forEach(row=>{
+      anteriores.push({
+        tema: row.querySelector('.outline-tema').value,
+        formato: row.querySelector('.outline-formato').value
+      });
+    });
+    let html = '';
+    for(let i=0;i<total;i++){
+      const prev = anteriores[i] || {tema:'', formato:''};
+      html += `
+      <div class="outline-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--grey);min-width:52px;">Post ${i+1}</span>
+        <input type="text" class="outline-tema" placeholder="Tema (ex: Lançamento, Benefícios...)" value="${escapeAttr(prev.tema)}" style="flex:1;" />
+        <select class="outline-formato" style="width:auto;min-width:130px;">
+          <option value="" ${prev.formato===''?'selected':''}>IA decide</option>
+          <option value="Estático" ${prev.formato==='Estático'?'selected':''}>Estático</option>
+          <option value="Carrossel" ${prev.formato==='Carrossel'?'selected':''}>Carrossel</option>
+          <option value="Reels" ${prev.formato==='Reels'?'selected':''}>Reels</option>
+          <option value="Stories" ${prev.formato==='Stories'?'selected':''}>Stories</option>
+        </select>
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+  if($('#posts-outline')) renderPostsOutline(parseInt($('#f-total').value,10));
+
+  if($('#f-total')) $('#f-total').oninput = (e)=>{ $('#f-total-val').textContent = e.target.value; renderPostsOutline(parseInt(e.target.value,10)); };
   if($('#f-legendaPorRedeSim')){
     $('#f-legendaPorRedeSim').onchange = (e)=>{
       $('#canais-separados-wrap').style.display = e.target.value === 'sim' ? 'block' : 'none';
@@ -1474,11 +1521,15 @@ function attachHandlers(){
       const total = parseInt($('#f-total').value, 10);
       const separarPorRede = $('#f-legendaPorRedeSim') && $('#f-legendaPorRedeSim').value === 'sim';
       const canaisSeparados = separarPorRede ? Array.from($$('.canal-separado-cb:checked')).map(cb=>cb.value) : [];
+      const outline = Array.from($$('#posts-outline .outline-row')).map(row=>({
+        tema: row.querySelector('.outline-tema').value.trim(),
+        formato: row.querySelector('.outline-formato').value
+      }));
       const slug = programa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
       state.cancelRequested = false; state.view='team-generating'; state.genProgress = {pct:0, log:'Iniciando...'}; render();
       try{
-        let posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); });
+        let posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); }, outline);
         if(canaisSeparados.length > 0) posts = expandirPostsPorRede(posts, canaisSeparados);
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
         await apiPost('saveClient', {client: clientRecord});
