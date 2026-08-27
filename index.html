@@ -560,6 +560,7 @@ function renderBriefForm(editMode){
           <div class="field"><label>Tipo de programa</label><input type="text" id="f-tipoPrograma" placeholder="Ex: Estágio, Trainee" value="${v(b.tipoPrograma)}" /></div>
         </div>
         <div class="field"><label>Tag interna do programa (organização interna Eureca, não aparece pro cliente)</label><input type="text" id="f-tagInterna" placeholder="Ex: [mrs.01.est] [natura.03.apz] [bradesco.09.trn]" value="${v(b.tagInterna)}" /></div>
+        <div class="field"><label>E-mail da especialista responsável (recebe os avisos de feedback do cliente)</label><input type="email" id="f-emailEspecialista" placeholder="Ex: nome@eureca.me" value="${v(b.emailEspecialista)}" /></div>
         <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
         <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
         <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: Agosto a Setembro/2026" value="${v(b.periodoAtracao)}" /></div>
@@ -680,7 +681,7 @@ function renderClientCalendar(isTeam){
     <div class="main" style="padding-bottom:0;">
       <button class="back-link" id="back-intro">&larr; Voltar</button>
       <div class="main-header"><div><h1>Calendário de conteúdos</h1><p>Clique em um post para ver os detalhes${isTeam ? ', editar e revisar' : ' e comentar'}.</p></div></div>
-      ${isTeam ? `<button class="btn-small btn-mint" id="add-manual-post" style="margin-bottom:16px;">+ Adicionar post manualmente</button>` : ''}
+      ${isTeam ? `<button class="btn-small btn-mint" id="add-manual-post" style="margin-bottom:16px;">+ Adicionar post manualmente</button>` : `<button class="btn-primary btn-mint" id="send-feedback" style="max-width:320px;margin-bottom:16px;">Enviar meus comentários para a equipe</button>`}
     </div>
     <div class="calendar-list">${rows}</div>
   </div>`;
@@ -745,15 +746,15 @@ function renderClientPostDetail(isTeam){
 
         <div class="post-detail-grid">
           <div>
-            ${renderFieldCollapse(idx, isTeam, 'copy', null, 'Copy', p.copy)}
-            ${p.roteiro ? `<div class="pd-label">Roteiro</div><div class="pd-value">${escapeHtml(p.roteiro)}</div>` : ''}
+            ${renderFieldCollapse(idx, isTeam, 'copy', null, 'Copy', p.copy, p)}
+            ${p.roteiro ? renderFieldCollapse(idx, isTeam, 'roteiro', null, 'Roteiro', p.roteiro, p) : ''}
             ${p.trend_insight ? `<div class="trend-note">📈 ${escapeHtml(p.trend_insight)}</div>` : ''}
             <div class="pd-label">Espaço pra arte</div>
             ${renderArtStage(p, idx, isTeam)}
           </div>
           <div>
-            ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>renderFieldCollapse(idx, isTeam, 'legenda', canal, 'Legenda '+canal, p.legendas[canal])).join('')}
-            ${renderCopyStage(p, idx, isTeam)}
+            ${Object.keys(p.legendas||{}).filter(c=>p.legendas[c]).map(canal=>renderFieldCollapse(idx, isTeam, 'legenda', canal, 'Legenda '+canal, p.legendas[canal], p)).join('')}
+            ${isTeam ? renderCopyStage(p, idx, isTeam) : ''}
           </div>
         </div>
 
@@ -795,13 +796,29 @@ function applyFieldValue(post, field, value){
   const parts = field.split('::');
   const fieldKey = parts[0], canal = parts[1];
   if(fieldKey === 'copy') post.copy = value;
+  else if(fieldKey === 'roteiro') post.roteiro = value;
   else if(fieldKey === 'legenda' && canal){ post.legendas = post.legendas || {}; post.legendas[canal] = value; }
 }
 
-function renderFieldCollapse(idx, isTeam, fieldKey, canal, label, value){
+function renderFieldCollapse(idx, isTeam, fieldKey, canal, label, value, post){
   const editId = canal ? `${fieldKey}::${canal}` : fieldKey;
+  const fStatus = (post.fieldStatus && post.fieldStatus[editId]) || 'pendente';
+  const fComments = (post.fieldComments && post.fieldComments[editId]) || [];
+  const commentsHtml = fComments.map(c=>`<div class="comment-item"><div class="meta">${escapeHtml(c.author)} · ${c.date}</div>${escapeHtml(c.text)}</div>`).join('');
+
+  const clientBlock = !isTeam ? `
+    <div class="pd-status-box" style="margin-top:10px;">
+      <span class="status-pill ${fStatus}">${statusLabel('copy', fStatus)}</span>
+      ${commentsHtml ? `<div class="comment-list" style="margin-top:8px;">${commentsHtml}</div>` : ''}
+      <div class="comment-input-row" style="margin-top:8px;"><input type="text" class="field-comment-box" data-idx="${idx}" data-field="${escapeAttr(editId)}" placeholder="Deixe um comentário (opcional)..." /></div>
+      <div class="action-row" style="margin-top:8px;">
+        <button class="btn-approve field-approve" data-idx="${idx}" data-field="${escapeAttr(editId)}">Aprovar</button>
+        <button class="btn-change field-change" data-idx="${idx}" data-field="${escapeAttr(editId)}">Pedir alteração</button>
+      </div>
+    </div>` : '';
+
   return `
-  <details class="field-collapse">
+  <details class="field-collapse" ${!isTeam ? 'open' : ''}>
     <summary class="pd-label" style="cursor:pointer;">${escapeHtml(label)}</summary>
     <div class="pd-value">${escapeHtml(value)}</div>
     ${isTeam ? `
@@ -815,6 +832,7 @@ function renderFieldCollapse(idx, isTeam, fieldKey, canal, label, value){
           <button class="btn-small btn-ghost regen-field" data-idx="${idx}" data-field="${escapeAttr(editId)}">Gerar nova versão com IA</button>
         </div>
       </div>` : ''}
+    ${clientBlock}
   </details>`;
 }
 
@@ -864,7 +882,8 @@ function ehFormatoVideo(formato){
 }
 
 function renderArtStage(p, idx, isTeam){
-  const unlocked = isTeam || p.copyStatus === 'aprovado';
+  const copyAprovada = (p.fieldStatus && p.fieldStatus['copy'] === 'aprovado');
+  const unlocked = isTeam || copyAprovada;
   if(!unlocked){
     return `<div class="stage"><div class="stage-head"><span class="stage-title">Etapa 2 · Arte</span><span class="status-pill locked">Bloqueado</span></div><div class="locked-note">Libera quando a copy for aprovada.</div></div>`;
   }
@@ -1012,7 +1031,7 @@ function attachHandlers(){
     });
   }
   function readBriefFromForm(){
-    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','periodoInscricoes','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
     const b = {};
     fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
     return b;
@@ -1107,6 +1126,37 @@ function attachHandlers(){
     };
   }
 
+  if($('#send-feedback')){
+    $('#send-feedback').onclick = async ()=>{
+      const client = state.currentClient;
+      const linhas = [];
+      client.posts.forEach((p, i)=>{
+        const fs = p.fieldStatus || {};
+        const fc = p.fieldComments || {};
+        Object.keys(fs).forEach(campo=>{
+          if(fs[campo] === 'alteracao'){
+            const comentarios = (fc[campo]||[]).map(c=>c.text).join(' | ') || '(sem comentário adicional)';
+            linhas.push(`Post ${i+1} — ${campo}: ${comentarios}`);
+          }
+        });
+      });
+      if(linhas.length === 0){ showToast('Nenhum pedido de alteração pendente pra enviar.'); return; }
+      const btn = $('#send-feedback'); const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try{
+        const result = await apiPost('notifyEspecialista', {
+          programa: client.name,
+          emailEspecialista: (client.brief && client.brief.emailEspecialista) || '',
+          itensTexto: linhas.join('\n'),
+          linkPlano: location.origin + location.pathname
+        });
+        if(result && result.ok){ showToast('Comentários enviados para a equipe!'); }
+        else { showToast('Não consegui enviar: ' + ((result && result.error) || 'erro desconhecido')); }
+      }catch(e){ showToast('Erro ao enviar: ' + e.message); }
+      btn.disabled = false; btn.textContent = original;
+    };
+  }
+
   if($('#add-manual-post')){
     $('#add-manual-post').onclick = async ()=>{
       const novoPost = {
@@ -1158,6 +1208,27 @@ function attachHandlers(){
       state.clientsIndex = await apiGet('getClientsIndex');
       render();
       showToast('Plano excluído.');
+    };
+  });
+
+  $$('.field-approve, .field-change').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const field = btn.getAttribute('data-field');
+      const isApprove = btn.classList.contains('field-approve');
+      const input = document.querySelector(`.field-comment-box[data-idx="${idx}"][data-field="${CSS.escape(field)}"]`);
+      const text = input ? input.value.trim() : '';
+      const post = state.currentClient.posts[idx];
+      post.fieldStatus = post.fieldStatus || {};
+      post.fieldStatus[field] = isApprove ? 'aprovado' : 'alteracao';
+      if(text){
+        post.fieldComments = post.fieldComments || {};
+        post.fieldComments[field] = post.fieldComments[field] || [];
+        post.fieldComments[field].push({author:'Cliente', text, date:new Date().toLocaleDateString('pt-BR')});
+      }
+      await apiPost('saveClient', {client: state.currentClient});
+      render();
+      showToast(isApprove ? 'Aprovado!' : 'Pedido de alteração registrado.');
     };
   });
 
