@@ -849,7 +849,10 @@ function renderBriefForm(editMode){
         <div class="field"><label>E-mail da especialista responsável (recebe os avisos de feedback do cliente)</label><input type="email" id="f-emailEspecialista" placeholder="Ex: nome@eureca.me" value="${v(b.emailEspecialista)}" /></div>
         <div class="field"><label>Sobre a empresa</label><textarea id="f-sobreEmpresa">${escapeHtml(b.sobreEmpresa)}</textarea></div>
         <div class="field"><label>Objetivo desse conteúdo</label><textarea id="f-objetivoEmail">${escapeHtml(b.objetivoEmail)}</textarea></div>
-        <div class="field"><label>Período de atração (aparece na introdução do plano para o cliente)</label><input type="text" id="f-periodoAtracao" placeholder="Ex: 01/03/2026 a 30/04/2026" value="${v(b.periodoAtracao)}" /></div>
+        <div class="grid-2">
+          <div class="field"><label>Data de lançamento do programa</label><input type="date" id="f-dataLancamento" value="${v(b.dataLancamento)}" /></div>
+          <div class="field"><label>Data de encerramento (quando sai do ar)</label><input type="date" id="f-dataEncerramento" value="${v(b.dataEncerramento)}" /></div>
+        </div>
 
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
         <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
@@ -930,7 +933,9 @@ function renderGenerating(){
 /* ==================== INTRODUÇÃO (equipe e cliente) ==================== */
 function renderClientIntro(isTeam){
   const client = state.currentClient;
-  const periodo = client.brief.periodoAtracao || client.brief.periodoInscricoes || '';
+  const dl = client.brief.dataLancamento, de = client.brief.dataEncerramento;
+  const periodo = (dl && de) ? `${formatarData(dl)} a ${formatarData(de)}`
+    : (dl ? `A partir de ${formatarData(dl)}` : (client.brief.periodoAtracao || client.brief.periodoInscricoes || ''));
   return `
   <div class="screen">
     <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
@@ -1365,15 +1370,23 @@ function attachHandlers(){
     };
   }
   if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
+async function gerarESalvarNewsletter(client){
+  const result = await apiPost('gerarDadosNewsletter', {brief: client.brief});
+  if(!result || !result.tabela) return null;
+  const dl = client.brief.dataLancamento, de = client.brief.dataEncerramento;
+  result.tabela.periodoAtracao = (dl && de) ? `${formatarData(dl)} a ${formatarData(de)}` : (dl ? `A partir de ${formatarData(dl)}` : '');
+  client.newsletterData = { tabela: result.tabela, texto: result.textoNewsletter || '' };
+  await apiPost('saveClient', {client});
+  return client.newsletterData;
+}
+
   if($('#gerar-newsletter')){
     $('#gerar-newsletter').onclick = async ()=>{
       const btn = $('#gerar-newsletter'); const original = btn.textContent;
       btn.disabled = true; btn.textContent = 'Gerando...';
       try{
-        const result = await apiPost('gerarDadosNewsletter', {brief: state.currentClient.brief});
-        if(result && result.tabela){
-          state.currentClient.newsletterData = { tabela: result.tabela, texto: result.textoNewsletter || '' };
-          await apiPost('saveClient', {client: state.currentClient});
+        const dados = await gerarESalvarNewsletter(state.currentClient);
+        if(dados){
           render();
           showToast('Dados de newsletter gerados!');
         } else {
@@ -1631,13 +1644,15 @@ function attachHandlers(){
     ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','regioesVagas','metasDiversidade','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
       set('f-'+f, brief[f]);
     });
-    set('f-periodoAtracao', brief.periodoAtracao || brief.periodoInscricoes); // planilha original ainda usa "período de inscrições"
+    set('f-dataLancamento', brief.dataLancamento);
+    set('f-dataEncerramento', brief.dataEncerramento);
   }
   function readBriefFromForm(){
-    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','regioesVagas','metasDiversidade','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','dataLancamento','dataEncerramento','tagInterna','emailEspecialista','areasVaga','sobreAreas','regioesVagas','metasDiversidade','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
     const b = {};
     fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
-    b.periodoInscricoes = b.periodoAtracao; // campo removido da tela — reaproveita o mesmo valor
+    b.periodoAtracao = (b.dataLancamento && b.dataEncerramento) ? (b.dataLancamento + ' a ' + b.dataEncerramento) : '';
+    b.periodoInscricoes = b.periodoAtracao; // campos removidos da tela — reaproveita as datas
     return b;
   }
 
@@ -1661,6 +1676,8 @@ function attachHandlers(){
         let posts = await generatePlanWithProgress(brief, total, (pct, log)=>{ state.genProgress = {pct, log}; render(); }, outline);
         if(canaisSeparados.length > 0) posts = expandirPostsPorRede(posts, canaisSeparados);
         const clientRecord = { name: programa, slug, brief, posts, createdAt: new Date().toISOString() };
+        state.genProgress = {pct:100, log:'Preparando dados para a Newsletter...'}; render();
+        try{ await gerarESalvarNewsletter(clientRecord); }catch(e){ /* não trava a criação do plano se isso falhar */ }
         await apiPost('saveClient', {client: clientRecord});
         state.clientsIndex = await apiGet('getClientsIndex');
         state.currentSlug = slug; state.currentClient = clientRecord; state.view = 'team-intro'; render();
