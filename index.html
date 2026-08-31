@@ -554,6 +554,7 @@ function render(){
   else if(state.view==='team-login') app.innerHTML = renderTeamLogin();
   else if(state.view==='team-dashboard') app.innerHTML = renderTeamDashboard();
   else if(state.view==='team-calendario-geral') app.innerHTML = renderCalendarioGeral();
+  else if(state.view==='team-newsletter') app.innerHTML = renderNewsletterCentral();
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
@@ -650,12 +651,59 @@ function renderTeamDashboard(){
   }).join('');
   return `
   <div class="screen">
-    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"> <span style="font-size:13px;font-weight:500;color:#C9C6D6;margin-left:4px;">· Painel da equipe</span></div><div class="topbar-actions"><button class="pill-btn" id="go-calendar-geral">Calendário geral</button><button class="pill-btn" id="logout">Sair</button></div></div>
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"> <span style="font-size:13px;font-weight:500;color:#C9C6D6;margin-left:4px;">· Painel da equipe</span></div><div class="topbar-actions"><button class="pill-btn" id="go-newsletter">Newsletter</button><button class="pill-btn" id="go-calendar-geral">Calendário geral</button><button class="pill-btn" id="logout">Sair</button></div></div>
     <div class="main">
       <div class="main-header"><div><h1>Clientes</h1><p>Encontre o plano de conteúdos do seu cliente.</p></div></div>
       ${state.clientsIndex.length ? `<div class="client-grid">${cards}</div>` : `<div class="empty-state">Nenhum cliente ainda. Clique em "Novo plano" para começar.</div>`}
     </div>
     <button class="fab" id="new-plan">+ Novo plano</button>
+  </div>`;
+}
+
+function renderNewsletterCentral(){
+  const itens = state.newsletterItens || [];
+  const colunas = [
+    {k:'empresa', l:'Empresa'}, {k:'segmentoCliente', l:'Segmento'}, {k:'nomePrograma', l:'Nome do Programa'},
+    {k:'tipoPrograma', l:'Tipo'}, {k:'formatoVaga', l:'Formato'}, {k:'quantidadeVagas', l:'Qtd. Vagas'},
+    {k:'metasDiversidade', l:'Metas de Diversidade'}, {k:'regioesVagas', l:'Regiões'}, {k:'areasPrograma', l:'Áreas'},
+    {k:'requisitosPrograma', l:'Requisitos'}, {k:'beneficios', l:'Benefícios'}, {k:'periodoAtracao', l:'Período de Atração'}
+  ];
+
+  const textos = itens.map(it=>`${it.texto}`).join('\n\n———\n\n');
+
+  const cards = itens.map((it,idx)=>`
+    <div class="newsletter-card" data-slug="${escapeAttr(it.clientSlug)}" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;">
+      <h3 style="margin:0 0 14px;">${escapeHtml(it.clientName)}</h3>
+      <div class="grid-2">
+        ${colunas.map(c=>`
+          <div class="field"><label>${c.l}</label><input type="text" class="newsletter-field" data-slug="${escapeAttr(it.clientSlug)}" data-key="${c.k}" value="${escapeAttr((it.tabela&&it.tabela[c.k])||'')}" /></div>
+        `).join('')}
+      </div>
+      <div class="field"><label>Texto da newsletter</label><textarea class="newsletter-texto-edit" data-slug="${escapeAttr(it.clientSlug)}" style="min-height:160px;">${escapeHtml(it.texto||'')}</textarea></div>
+      <button class="btn-small btn-mint save-newsletter-row" data-idx="${idx}" data-slug="${escapeAttr(it.clientSlug)}">Salvar alterações</button>
+    </div>
+  `).join('');
+
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+      <div class="topbar-actions"><button class="pill-btn" id="back-dashboard">Voltar</button></div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <div><h1>Newsletter</h1><p>Dados e mini-textos de todos os programas que já geraram newsletter. Edite qualquer campo e clique em "Salvar alterações".</p></div>
+        <button class="btn-small btn-mint" id="export-newsletter-csv">Exportar tabela (CSV)</button>
+      </div>
+
+      ${itens.length === 0 ? `<div class="empty-state">Nenhum programa gerou dados de newsletter ainda. Abra um programa e clique em "Gerar dados para a Newsletter".</div>` : `
+      ${cards}
+
+      <div class="main-header"><div><h1 style="font-size:20px;">Todos os textinhos juntos</h1></div>
+        <button class="btn-small btn-ghost" id="copy-newsletter-textos">Copiar todos</button>
+      </div>
+      <textarea id="newsletter-textos-area" readonly style="width:100%;min-height:220px;font-size:12.5px;line-height:1.6;">${textos}</textarea>
+      `}
+    </div>
   </div>`;
 }
 
@@ -806,6 +854,10 @@ function renderBriefForm(editMode){
         <h3 style="font-size:14px;margin:24px 0 12px;color:var(--ink-soft);">Vagas e benefícios</h3>
         <div class="field"><label>Áreas de vaga do programa</label><textarea id="f-areasVaga">${escapeHtml(b.areasVaga)}</textarea></div>
         <div class="field"><label>O que sabemos sobre essas áreas na empresa</label><textarea id="f-sobreAreas">${escapeHtml(b.sobreAreas)}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label>Regiões das vagas</label><input type="text" id="f-regioesVagas" placeholder="Ex: São Paulo (capital) e Grande SP" value="${v(b.regioesVagas)}" /></div>
+          <div class="field"><label>Metas de diversidade</label><input type="text" id="f-metasDiversidade" placeholder="Ex: 50% das vagas para pessoas negras" value="${v(b.metasDiversidade)}" /></div>
+        </div>
         <div class="field"><label>Benefícios oferecidos</label><textarea id="f-beneficios">${escapeHtml(b.beneficios)}</textarea></div>
         <div class="grid-2">
           <div class="field"><label>Modalidade de trabalho</label><input type="text" id="f-modalidade" value="${v(b.modalidade)}" /></div>
@@ -912,6 +964,7 @@ function renderClientIntro(isTeam){
       </div>
       <button class="btn-primary btn-mint" id="go-calendar" style="max-width:280px;">Ver calendário de posts</button>
       ${isTeam ? `<button class="link-btn" id="go-comments-history" style="margin-top:16px;">Ver histórico de comentários do cliente</button>` : ''}
+      ${isTeam ? `<button class="link-btn" id="gerar-newsletter" style="margin-top:8px;">${client.newsletterData ? 'Regenerar dados para a Newsletter' : 'Gerar dados para a Newsletter'}</button>` : ''}
     </div>
   </div>`;
 }
@@ -1312,6 +1365,24 @@ function attachHandlers(){
     };
   }
   if($('#go-calendar')) $('#go-calendar').onclick = ()=>{ state.view = state.role==='team' ? 'team-calendar' : 'client-calendar'; render(); };
+  if($('#gerar-newsletter')){
+    $('#gerar-newsletter').onclick = async ()=>{
+      const btn = $('#gerar-newsletter'); const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Gerando...';
+      try{
+        const result = await apiPost('gerarDadosNewsletter', {brief: state.currentClient.brief});
+        if(result && result.tabela){
+          state.currentClient.newsletterData = { tabela: result.tabela, texto: result.textoNewsletter || '' };
+          await apiPost('saveClient', {client: state.currentClient});
+          render();
+          showToast('Dados de newsletter gerados!');
+        } else {
+          showToast('Não consegui gerar. Tenta de novo.');
+          btn.disabled = false; btn.textContent = original;
+        }
+      }catch(e){ showToast('Erro: ' + e.message); btn.disabled = false; btn.textContent = original; }
+    };
+  }
   if($('#go-comments-history')) $('#go-comments-history').onclick = ()=>{ state.view = 'team-comments-history'; render(); };
   $$('.client-card[data-idx]').forEach(card=>{
     card.onclick = ()=>{
@@ -1334,6 +1405,64 @@ function attachHandlers(){
       state.calendarioGeral = await apiGet('getAllPostsForCalendar');
       state.view = 'team-calendario-geral';
       render();
+    };
+  }
+  if($('#go-newsletter')){
+    $('#go-newsletter').onclick = async ()=>{
+      state.newsletterItens = await apiGet('getAllNewsletterData');
+      state.view = 'team-newsletter';
+      render();
+    };
+  }
+  if($('#export-newsletter-csv')){
+    $('#export-newsletter-csv').onclick = ()=>{
+      const itens = state.newsletterItens || [];
+      const colunas = [
+        {k:'empresa', l:'Empresa'}, {k:'segmentoCliente', l:'Segmento'}, {k:'nomePrograma', l:'Nome do Programa'},
+        {k:'tipoPrograma', l:'Tipo'}, {k:'formatoVaga', l:'Formato'}, {k:'quantidadeVagas', l:'Qtd. Vagas'},
+        {k:'metasDiversidade', l:'Metas de Diversidade'}, {k:'regioesVagas', l:'Regiões'}, {k:'areasPrograma', l:'Áreas'},
+        {k:'requisitosPrograma', l:'Requisitos'}, {k:'beneficios', l:'Benefícios'}, {k:'periodoAtracao', l:'Período de Atração'}
+      ];
+      const escapeCsv = (v)=>`"${String(v||'').replace(/"/g,'""')}"`;
+      const linhas = [colunas.map(c=>escapeCsv(c.l)).join(',')];
+      itens.forEach(it=>{ linhas.push(colunas.map(c=>escapeCsv(it.tabela&&it.tabela[c.k])).join(',')); });
+      const csv = '\uFEFF' + linhas.join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'newsletter-eureca.csv'; a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
+  $$('.save-newsletter-row').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const slug = btn.getAttribute('data-slug');
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try{
+        const client = await apiGet('getClient', {slug});
+        const novaTabela = {};
+        document.querySelectorAll(`.newsletter-field[data-slug="${slug}"]`).forEach(input=>{
+          novaTabela[input.getAttribute('data-key')] = input.value;
+        });
+        const novoTexto = document.querySelector(`.newsletter-texto-edit[data-slug="${slug}"]`).value;
+        client.newsletterData = { tabela: novaTabela, texto: novoTexto };
+        await apiPost('saveClient', {client});
+        state.newsletterItens[idx] = { clientSlug: slug, clientName: client.name, tabela: novaTabela, texto: novoTexto };
+        render();
+        showToast('Alterações salvas!');
+      }catch(e){ showToast('Erro ao salvar: ' + e.message); }
+      btn.disabled = false; btn.textContent = original;
+    };
+  });
+
+  if($('#copy-newsletter-textos')){
+    $('#copy-newsletter-textos').onclick = ()=>{
+      const area = $('#newsletter-textos-area');
+      area.select();
+      document.execCommand('copy');
+      showToast('Textos copiados!');
     };
   }
   if($('#cal-prev')){
@@ -1499,13 +1628,13 @@ function attachHandlers(){
 
   function fillBriefForm(brief){
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
-    ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
+    ['programa','tipoPrograma','objetivoEmail','areasVaga','sobreAreas','regioesVagas','metasDiversidade','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais','sobreEmpresa'].forEach(f=>{
       set('f-'+f, brief[f]);
     });
     set('f-periodoAtracao', brief.periodoAtracao || brief.periodoInscricoes); // planilha original ainda usa "período de inscrições"
   }
   function readBriefFromForm(){
-    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
+    const fields = ['programa','sobreEmpresa','tipoPrograma','objetivoEmail','periodoAtracao','tagInterna','emailEspecialista','areasVaga','sobreAreas','regioesVagas','metasDiversidade','faseTestes','beneficios','modalidade','valorBolsa','requisitos','ondeInscrever','cronograma','motivoInteresse','mote','tomVoz','redes','algoMais'];
     const b = {};
     fields.forEach(f=>{ const el = document.getElementById('f-'+f); b[f] = el ? el.value.trim() : ''; });
     b.periodoInscricoes = b.periodoAtracao; // campo removido da tela — reaproveita o mesmo valor
