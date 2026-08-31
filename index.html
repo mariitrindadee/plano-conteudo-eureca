@@ -556,6 +556,7 @@ function render(){
   else if(state.view==='team-calendario-geral') app.innerHTML = renderCalendarioGeral();
   else if(state.view==='team-newsletter') app.innerHTML = renderNewsletterCentral();
   else if(state.view==='team-enxoval') app.innerHTML = renderEnxovalEmails();
+  else if(state.view==='team-enxoval-generating') app.innerHTML = renderGeneratingEnxoval();
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
@@ -986,6 +987,14 @@ function renderGenerating(){
   </div></div></div>`;
 }
 
+function renderGeneratingEnxoval(){
+  return `<div class="screen"><div class="main"><div class="progress-wrap">
+    <div class="spinner"></div><h2>Gerando e-mails e artigo de blog</h2>
+    <div class="progress-log">Escrevendo os 12 e-mails e o artigo, seguindo o tom de voz da Eureca...</div>
+    <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso pode levar 1 a 2 minutos. Não feche essa aba.</p>
+  </div></div></div>`;
+}
+
 /* ==================== INTRODUÇÃO (equipe e cliente) ==================== */
 function renderClientIntro(isTeam){
   const client = state.currentClient;
@@ -1024,9 +1033,12 @@ function renderClientIntro(isTeam){
         </div>
       </div>
       <button class="btn-primary btn-mint" id="go-calendar" style="max-width:280px;">Ver calendário de posts</button>
-      ${isTeam ? `<button class="link-btn" id="go-comments-history" style="margin-top:16px;">Ver histórico de comentários do cliente</button>` : ''}
-      ${isTeam ? `<button class="link-btn" id="gerar-newsletter" style="margin-top:8px;">${client.newsletterData ? 'Regenerar dados para a Newsletter' : 'Gerar dados para a Newsletter'}</button>` : ''}
-      ${isTeam ? `<button class="link-btn" id="go-enxoval" style="margin-top:8px;">Enxoval de e-mails e artigo de blog</button>` : ''}
+      ${isTeam ? `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn-small btn-ghost" id="go-comments-history">Histórico de comentários</button>
+        <button class="btn-small btn-ghost" id="gerar-newsletter">${client.newsletterData ? 'Regenerar dados para a Newsletter' : 'Gerar dados para a Newsletter'}</button>
+        <button class="btn-small btn-ghost" id="go-enxoval">Enxoval de e-mails e artigo de blog</button>
+      </div>` : ''}
     </div>
   </div>`;
 }
@@ -1460,20 +1472,20 @@ async function gerarESalvarNewsletter(client){
   }
   if($('#gerar-enxoval-btn')){
     $('#gerar-enxoval-btn').onclick = async ()=>{
-      const btn = $('#gerar-enxoval-btn'); const original = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Gerando...';
+      const voltarPara = state.view;
+      state.view = 'team-enxoval-generating'; render();
       try{
         const result = await apiPost('gerarEnxovalEmails', {brief: state.currentClient.brief});
         if(result && result.emails){
           state.currentClient.enxovalEmails = result;
           await apiPost('saveClient', {client: state.currentClient});
-          render();
+          state.view = 'team-enxoval'; render();
           showToast('Enxoval gerado!');
         } else {
+          state.view = voltarPara; render();
           showToast('Não consegui gerar. Tenta de novo.');
-          btn.disabled = false; btn.textContent = original;
         }
-      }catch(e){ showToast('Erro: ' + e.message); btn.disabled = false; btn.textContent = original; }
+      }catch(e){ state.view = voltarPara; render(); showToast('Erro: ' + e.message); }
     };
   }
   $$('.copy-email-item').forEach(btn=>{
