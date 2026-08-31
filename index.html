@@ -555,6 +555,7 @@ function render(){
   else if(state.view==='team-dashboard') app.innerHTML = renderTeamDashboard();
   else if(state.view==='team-calendario-geral') app.innerHTML = renderCalendarioGeral();
   else if(state.view==='team-newsletter') app.innerHTML = renderNewsletterCentral();
+  else if(state.view==='team-enxoval') app.innerHTML = renderEnxovalEmails();
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
@@ -657,6 +658,61 @@ function renderTeamDashboard(){
       ${state.clientsIndex.length ? `<div class="client-grid">${cards}</div>` : `<div class="empty-state">Nenhum cliente ainda. Clique em "Novo plano" para começar.</div>`}
     </div>
     <button class="fab" id="new-plan">+ Novo plano</button>
+  </div>`;
+}
+
+/* ==================== ENXOVAL DE E-MAILS + ARTIGO DE BLOG ==================== */
+function renderEnxovalEmails(){
+  const client = state.currentClient;
+  const enxoval = client.enxovalEmails;
+
+  if(!enxoval){
+    return `
+    <div class="screen">
+      <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+        <div class="topbar-actions"><button class="pill-btn" id="back-intro">Voltar</button></div>
+      </div>
+      <div class="main">
+        <div class="main-header"><div><h1>Enxoval de e-mails e artigo de blog</h1><p>Programa: ${escapeHtml(client.name)}</p></div></div>
+        <div class="empty-state">Ainda não foi gerado. <button class="btn-small btn-mint" id="gerar-enxoval-btn" style="margin-left:10px;">Gerar agora</button></div>
+      </div>
+    </div>`;
+  }
+
+  const emailBlocks = (enxoval.emails||[]).map((e,i)=>`
+    <details class="field-collapse">
+      <summary class="pd-label" style="cursor:pointer;">${i+1}. ${escapeHtml(e.titulo)}</summary>
+      <div class="pd-value"><b>Assunto:</b> ${escapeHtml(e.assunto)}</div>
+      <div class="pd-value">${escapeHtml(e.corpo)}</div>
+      <button class="btn-small btn-ghost copy-email-item" data-idx="${i}">Copiar este e-mail</button>
+    </details>
+  `).join('');
+
+  const blogBlock = enxoval.artigoBlog ? `
+    <details class="field-collapse" open>
+      <summary class="pd-label" style="cursor:pointer;">Artigo de blog</summary>
+      <div class="pd-value"><b>${escapeHtml(enxoval.artigoBlog.titulo||'')}</b></div>
+      <div class="pd-value">${escapeHtml(enxoval.artigoBlog.corpo||'')}</div>
+    </details>` : '';
+
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+      <div class="topbar-actions"><button class="pill-btn" id="back-intro">Voltar</button></div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <div><h1>Enxoval de e-mails e artigo de blog</h1><p>Programa: ${escapeHtml(client.name)}</p></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-small btn-ghost" id="gerar-enxoval-btn">Regenerar</button>
+          <button class="btn-small btn-mint" id="baixar-enxoval-word">Baixar em Word</button>
+        </div>
+      </div>
+      <h3 style="font-size:15px;margin:20px 0 10px;color:var(--ink-soft);">E-mails</h3>
+      ${emailBlocks}
+      <h3 style="font-size:15px;margin:24px 0 10px;color:var(--ink-soft);">Blog</h3>
+      ${blogBlock}
+    </div>
   </div>`;
 }
 
@@ -970,6 +1026,7 @@ function renderClientIntro(isTeam){
       <button class="btn-primary btn-mint" id="go-calendar" style="max-width:280px;">Ver calendário de posts</button>
       ${isTeam ? `<button class="link-btn" id="go-comments-history" style="margin-top:16px;">Ver histórico de comentários do cliente</button>` : ''}
       ${isTeam ? `<button class="link-btn" id="gerar-newsletter" style="margin-top:8px;">${client.newsletterData ? 'Regenerar dados para a Newsletter' : 'Gerar dados para a Newsletter'}</button>` : ''}
+      ${isTeam ? `<button class="link-btn" id="go-enxoval" style="margin-top:8px;">Enxoval de e-mails e artigo de blog</button>` : ''}
     </div>
   </div>`;
 }
@@ -1397,6 +1454,56 @@ async function gerarESalvarNewsletter(client){
     };
   }
   if($('#go-comments-history')) $('#go-comments-history').onclick = ()=>{ state.view = 'team-comments-history'; render(); };
+
+  if($('#go-enxoval')){
+    $('#go-enxoval').onclick = ()=>{ state.view = 'team-enxoval'; render(); };
+  }
+  if($('#gerar-enxoval-btn')){
+    $('#gerar-enxoval-btn').onclick = async ()=>{
+      const btn = $('#gerar-enxoval-btn'); const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Gerando...';
+      try{
+        const result = await apiPost('gerarEnxovalEmails', {brief: state.currentClient.brief});
+        if(result && result.emails){
+          state.currentClient.enxovalEmails = result;
+          await apiPost('saveClient', {client: state.currentClient});
+          render();
+          showToast('Enxoval gerado!');
+        } else {
+          showToast('Não consegui gerar. Tenta de novo.');
+          btn.disabled = false; btn.textContent = original;
+        }
+      }catch(e){ showToast('Erro: ' + e.message); btn.disabled = false; btn.textContent = original; }
+    };
+  }
+  $$('.copy-email-item').forEach(btn=>{
+    btn.onclick = ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      const email = state.currentClient.enxovalEmails.emails[idx];
+      const texto = `Assunto: ${email.assunto}\n\n${email.corpo}`;
+      navigator.clipboard.writeText(texto).then(()=>showToast('E-mail copiado!'));
+    };
+  });
+  if($('#baixar-enxoval-word')){
+    $('#baixar-enxoval-word').onclick = ()=>{
+      const client = state.currentClient;
+      const enxoval = client.enxovalEmails;
+      let html = `<h1>Enxoval de E-mails — ${escapeHtml(client.name)}</h1>`;
+      (enxoval.emails||[]).forEach((e,i)=>{
+        html += `<h2>${i+1}. ${escapeHtml(e.titulo)}</h2><p><b>Assunto:</b> ${escapeHtml(e.assunto)}</p><p>${escapeHtml(e.corpo).replace(/\n/g,'<br>')}</p><hr>`;
+      });
+      if(enxoval.artigoBlog){
+        html += `<h1>Artigo de Blog</h1><h2>${escapeHtml(enxoval.artigoBlog.titulo||'')}</h2><p>${escapeHtml(enxoval.artigoBlog.corpo||'').replace(/\n/g,'<br>')}</p>`;
+      }
+      const docHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Enxoval</title></head><body>${html}</body></html>`;
+      const blob = new Blob(['\ufeff', docHtml], {type:'application/msword'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `Enxoval de E-mails - ${client.name}.doc`; a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
+
   $$('.client-card[data-idx]').forEach(card=>{
     card.onclick = ()=>{
       state.currentPostIdx = parseInt(card.getAttribute('data-idx'),10);
