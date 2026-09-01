@@ -558,6 +558,7 @@ function render(){
   else if(state.view==='team-enxoval') app.innerHTML = renderEnxovalEmails();
   else if(state.view==='team-divulgacao') app.innerHTML = renderDivulgacaoInstitucional();
   else if(state.view==='team-enxoval-generating') app.innerHTML = renderGeneratingEnxoval();
+  else if(state.view==='team-divulgacao-generating') app.innerHTML = renderGeneratingDivulgacao();
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
   else if(state.view==='team-generating') app.innerHTML = renderGenerating();
@@ -1057,6 +1058,14 @@ function renderGeneratingEnxoval(){
   </div></div></div>`;
 }
 
+function renderGeneratingDivulgacao(){
+  return `<div class="screen"><div class="main"><div class="progress-wrap">
+    <div class="spinner"></div><h2>Gerando divulgação institucional</h2>
+    <div class="progress-log">Cruzando a base de candidatos com a planilha de parceiros...</div>
+    <p style="font-size:12px;color:var(--grey);margin-top:16px;">Isso pode levar até 1 minuto. Não feche essa aba.</p>
+  </div></div></div>`;
+}
+
 /* ==================== INTRODUÇÃO (equipe e cliente) ==================== */
 function renderClientIntro(isTeam){
   const client = state.currentClient;
@@ -1536,7 +1545,7 @@ async function gerarESalvarNewsletter(client){
   if($('#gerar-divulgacao-btn')){
     $('#gerar-divulgacao-btn').onclick = async ()=>{
       const voltarPara = state.view;
-      state.view = 'team-enxoval-generating'; render(); // reaproveita a mesma tela de "gerando..."
+      state.view = 'team-divulgacao-generating'; render();
       try{
         const result = await apiPost('gerarDivulgacaoInstitucional', {brief: state.currentClient.brief});
         if(result && result.top20){
