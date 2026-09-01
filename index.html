@@ -262,7 +262,7 @@ function jsonpGet_(url){
   });
 }
 let __eurecaMsgCounter = 0;
-function apiPost(action, payload){
+function apiPost(action, payload, timeoutMs){
   return new Promise((resolve, reject)=>{
     const frameName = 'eureca_frame_' + (__eurecaMsgCounter++);
     const iframe = document.createElement('iframe');
@@ -283,9 +283,10 @@ function apiPost(action, payload){
     form.appendChild(input);
     document.body.appendChild(form);
 
-    // Geração de plano pode demorar bastante (vários posts em sequência) — damos até 9 minutos.
-    // Cada chamada agora gera só 1 post (não o plano inteiro), então 90s já é folgado.
-    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error('A IA demorou demais pra responder (mais de 90s). Tente de novo.')); }, 90000);
+    // Prazo padrão de 90s (uma geração leve, tipo 1 post). Operações mais
+    // pesadas (ex: divulgação institucional) passam um valor maior.
+    const prazo = timeoutMs || 90000;
+    const timeoutId = setTimeout(()=>{ cleanup(); reject(new Error(`A IA demorou demais pra responder (mais de ${Math.round(prazo/1000)}s). Tente de novo.`)); }, prazo);
     function cleanup(){
       clearTimeout(timeoutId);
       window.removeEventListener('message', onMessage);
@@ -1547,7 +1548,7 @@ async function gerarESalvarNewsletter(client){
       const voltarPara = state.view;
       state.view = 'team-divulgacao-generating'; render();
       try{
-        const result = await apiPost('gerarDivulgacaoInstitucional', {brief: state.currentClient.brief});
+        const result = await apiPost('gerarDivulgacaoInstitucional', {brief: state.currentClient.brief}, 300000); // até 5 min
         if(result && result.top20){
           state.currentClient.divulgacaoInstitucional = result;
           await apiPost('saveClient', {client: state.currentClient});
@@ -1600,7 +1601,7 @@ async function gerarESalvarNewsletter(client){
       const voltarPara = state.view;
       state.view = 'team-enxoval-generating'; render();
       try{
-        const result = await apiPost('gerarEnxovalEmails', {brief: state.currentClient.brief});
+        const result = await apiPost('gerarEnxovalEmails', {brief: state.currentClient.brief}, 240000); // até 4 min
         if(result && result.emails){
           state.currentClient.enxovalEmails = result;
           await apiPost('saveClient', {client: state.currentClient});
