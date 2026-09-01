@@ -556,6 +556,7 @@ function render(){
   else if(state.view==='team-calendario-geral') app.innerHTML = renderCalendarioGeral();
   else if(state.view==='team-newsletter') app.innerHTML = renderNewsletterCentral();
   else if(state.view==='team-enxoval') app.innerHTML = renderEnxovalEmails();
+  else if(state.view==='team-divulgacao') app.innerHTML = renderDivulgacaoInstitucional();
   else if(state.view==='team-enxoval-generating') app.innerHTML = renderGeneratingEnxoval();
   else if(state.view==='team-brief') app.innerHTML = renderBriefForm(false);
   else if(state.view==='team-edit-brief') app.innerHTML = renderBriefForm(true);
@@ -663,6 +664,67 @@ function renderTeamDashboard(){
 }
 
 /* ==================== ENXOVAL DE E-MAILS + ARTIGO DE BLOG ==================== */
+/* ==================== DIVULGAÇÃO INSTITUCIONAL ==================== */
+function renderDivulgacaoInstitucional(){
+  const client = state.currentClient;
+  const dados = client.divulgacaoInstitucional;
+
+  if(!dados){
+    return `
+    <div class="screen">
+      <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+        <div class="topbar-actions"><button class="pill-btn" id="back-intro">Voltar</button></div>
+      </div>
+      <div class="main">
+        <div class="main-header"><div><h1>Divulgação institucional</h1><p>Programa: ${escapeHtml(client.name)}</p></div></div>
+        <div class="empty-state">Ainda não foi gerado. <button class="btn-small btn-mint" id="gerar-divulgacao-btn" style="margin-left:10px;">Gerar agora</button></div>
+      </div>
+    </div>`;
+  }
+
+  const semContato = (dados.top20||[]).length - (dados.comContato||[]).length;
+  const cards = (dados.comContato||[]).map((item,i)=>`
+    <div class="newsletter-card" style="background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:700;">
+            <input type="checkbox" class="divulgacao-check" data-idx="${i}" checked style="width:auto;" />
+            ${escapeHtml(item.instituicao)}
+          </label>
+          <div style="font-size:11px;color:var(--grey);margin-top:4px;">${item.totalCandidatos} candidatos na base · ${escapeHtml(item.tipo||'')} · Contatos: ${item.emails.map(escapeHtml).join(', ')}</div>
+        </div>
+      </div>
+      <div class="field-block" style="margin-top:12px;"><div class="label">Assunto</div><input type="text" class="divulgacao-assunto" data-idx="${i}" value="${escapeAttr(item.assunto||'')}" /></div>
+      <div class="field-block"><div class="label">Corpo do e-mail</div><textarea class="divulgacao-corpo" data-idx="${i}" style="min-height:140px;">${escapeHtml(item.corpo||'')}</textarea></div>
+    </div>
+  `).join('');
+
+  return `
+  <div class="screen">
+    <div class="topbar"><div class="brand"><img src="${LOGO_EURECA_WHITE}" alt="Eureca" style="height:40px;display:block;"></div>
+      <div class="topbar-actions"><button class="pill-btn" id="back-intro">Voltar</button></div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <div><h1>Divulgação institucional</h1><p>Top 20 instituições da região/curso da vaga, cruzadas com contatos já mapeados.</p></div>
+        <button class="btn-small btn-ghost" id="gerar-divulgacao-btn">Regenerar</button>
+      </div>
+
+      <div class="stat-row" style="display:flex;gap:16px;margin-bottom:20px;">
+        <div class="chip ok">${(dados.comContato||[]).length} com contato mapeado</div>
+        <div class="chip pending">${semContato > 0 ? semContato : 0} sem contato na base de parceiros</div>
+      </div>
+
+      ${cards || `<div class="empty-state">Nenhuma das Top 20 instituições tem contato mapeado na planilha de parceiros ainda.</div>`}
+
+      ${cards ? `
+      <div class="field"><label>E-mail em cópia (especialista de comunicação)</label><input type="text" id="divulgacao-copia" value="${escapeAttr(client.brief && client.brief.emailEspecialista || '')}" /></div>
+      <button class="btn-primary btn-mint" id="enviar-divulgacao-btn" style="max-width:320px;">Enviar e-mails marcados</button>
+      ` : ''}
+    </div>
+  </div>`;
+}
+
 function renderEnxovalEmails(){
   const client = state.currentClient;
   const enxoval = client.enxovalEmails;
@@ -1038,6 +1100,7 @@ function renderClientIntro(isTeam){
         <button class="btn-small btn-ghost" id="go-comments-history">Histórico de comentários</button>
         <button class="btn-small btn-ghost" id="gerar-newsletter">${client.newsletterData ? 'Regenerar dados para a Newsletter' : 'Gerar dados para a Newsletter'}</button>
         <button class="btn-small btn-ghost" id="go-enxoval">Enxoval de e-mails e artigo de blog</button>
+        <button class="btn-small btn-ghost" id="go-divulgacao">Divulgação institucional</button>
       </div>` : ''}
     </div>
   </div>`;
@@ -1466,6 +1529,59 @@ async function gerarESalvarNewsletter(client){
     };
   }
   if($('#go-comments-history')) $('#go-comments-history').onclick = ()=>{ state.view = 'team-comments-history'; render(); };
+
+  if($('#go-divulgacao')){
+    $('#go-divulgacao').onclick = ()=>{ state.view = 'team-divulgacao'; render(); };
+  }
+  if($('#gerar-divulgacao-btn')){
+    $('#gerar-divulgacao-btn').onclick = async ()=>{
+      const voltarPara = state.view;
+      state.view = 'team-enxoval-generating'; render(); // reaproveita a mesma tela de "gerando..."
+      try{
+        const result = await apiPost('gerarDivulgacaoInstitucional', {brief: state.currentClient.brief});
+        if(result && result.top20){
+          state.currentClient.divulgacaoInstitucional = result;
+          await apiPost('saveClient', {client: state.currentClient});
+          state.view = 'team-divulgacao'; render();
+          showToast('Divulgação institucional gerada!');
+        } else {
+          state.view = voltarPara; render();
+          showToast('Não consegui gerar. Tenta de novo.');
+        }
+      }catch(e){ state.view = voltarPara; render(); showToast('Erro: ' + e.message); }
+    };
+  }
+  $$('.divulgacao-assunto').forEach(input=>{
+    input.onchange = ()=>{
+      const idx = parseInt(input.getAttribute('data-idx'),10);
+      state.currentClient.divulgacaoInstitucional.comContato[idx].assunto = input.value;
+    };
+  });
+  $$('.divulgacao-corpo').forEach(area=>{
+    area.onchange = ()=>{
+      const idx = parseInt(area.getAttribute('data-idx'),10);
+      state.currentClient.divulgacaoInstitucional.comContato[idx].corpo = area.value;
+    };
+  });
+  if($('#enviar-divulgacao-btn')){
+    $('#enviar-divulgacao-btn').onclick = async ()=>{
+      const btn = $('#enviar-divulgacao-btn'); const original = btn.textContent;
+      const marcados = Array.from($$('.divulgacao-check:checked')).map(cb=>parseInt(cb.getAttribute('data-idx'),10));
+      if(marcados.length === 0){ showToast('Marque ao menos uma instituição.'); return; }
+      const itens = marcados.map(i => state.currentClient.divulgacaoInstitucional.comContato[i]);
+      const emailCopia = $('#divulgacao-copia').value.trim();
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try{
+        const result = await apiPost('enviarDivulgacaoInstitucional', {itens, emailCopia});
+        if(result){
+          showToast(`${result.enviados} e-mail(s) enviados!${result.erros && result.erros.length ? ' ' + result.erros.length + ' com erro.' : ''}`);
+        } else {
+          showToast('Não consegui enviar. Tenta de novo.');
+        }
+      }catch(e){ showToast('Erro: ' + e.message); }
+      btn.disabled = false; btn.textContent = original;
+    };
+  }
 
   if($('#go-enxoval')){
     $('#go-enxoval').onclick = ()=>{ state.view = 'team-enxoval'; render(); };
